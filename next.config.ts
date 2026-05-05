@@ -26,7 +26,10 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Cross-Origin-Embedder-Policy", value: "require-corp" },
+          // `credentialless` keeps SharedArrayBuffer (needed by the FHEVM relayer SDK)
+          // while letting cross-origin images (CoinGecko, IPFS gateways, etc.) load
+          // without requiring those servers to set Cross-Origin-Resource-Policy.
+          { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
         ],
       },
     ];
