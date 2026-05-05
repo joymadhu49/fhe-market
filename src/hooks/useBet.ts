@@ -78,7 +78,6 @@ export function useBet(marketAddress: `0x${string}`) {
   async function ensureOperator() {
     if (isOperatorSet) return;
     setStep("operator");
-    toast.loading("Approving market as cUSDT operator…", { id: "bet" });
     const until = Math.floor(Date.now() / 1000) + OPERATOR_WINDOW_SECONDS;
     const hash = await writeContractAsync({
       address: CUSDT_ADDRESS,
@@ -111,11 +110,9 @@ export function useBet(marketAddress: `0x${string}`) {
       await ensureOperator();
 
       setStep("encrypting");
-      toast.loading("Encrypting bet…", { id: "bet" });
       const { handle, inputProof } = await encryptU64(marketAddress, address, amount);
 
       setStep("buyIntent");
-      toast.loading("Submitting encrypted bet…", { id: "bet" });
       const intentHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -125,7 +122,6 @@ export function useBet(marketAddress: `0x${string}`) {
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash: intentHash });
 
       setStep("buyDecrypting");
-      toast.loading("Waiting for relayer to publicly decrypt amount…", { id: "bet" });
       const pendingHandle = (await publicClient!.readContract({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -135,7 +131,6 @@ export function useBet(marketAddress: `0x${string}`) {
       const { value, proof } = await publicDecrypt(pendingHandle);
 
       setStep("buyExecute");
-      toast.loading("Executing CPMM swap…", { id: "bet" });
       const execHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -175,11 +170,9 @@ export function useBet(marketAddress: `0x${string}`) {
 
     try {
       setStep("encrypting");
-      toast.loading("Encrypting sell amount…", { id: "bet" });
       const { handle, inputProof } = await encryptU64(marketAddress, address, sharesIn);
 
       setStep("sellIntent");
-      toast.loading("Submitting sell intent…", { id: "bet" });
       const intentHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -189,7 +182,6 @@ export function useBet(marketAddress: `0x${string}`) {
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash: intentHash });
 
       setStep("sellDecrypting");
-      toast.loading("Decrypting clamped share count…", { id: "bet" });
       const pendingHandle = (await publicClient!.readContract({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -199,7 +191,6 @@ export function useBet(marketAddress: `0x${string}`) {
       const { value, proof } = await publicDecrypt(pendingHandle);
 
       setStep("sellExecute");
-      toast.loading("Settling sell…", { id: "bet" });
       const execHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -233,7 +224,6 @@ export function useBet(marketAddress: `0x${string}`) {
     }
     try {
       setStep("claimIntent");
-      toast.loading("Snapshotting winnings…", { id: "claim" });
       const intentHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -242,7 +232,6 @@ export function useBet(marketAddress: `0x${string}`) {
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash: intentHash });
 
       setStep("claimDecrypting");
-      toast.loading("Decrypting winning balance…", { id: "claim" });
       const pendingHandle = (await publicClient!.readContract({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -252,7 +241,6 @@ export function useBet(marketAddress: `0x${string}`) {
       const { value, proof } = await publicDecrypt(pendingHandle);
 
       setStep("claimExecute");
-      toast.loading("Paying out cUSDT…", { id: "claim" });
       const execHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
@@ -273,6 +261,23 @@ export function useBet(marketAddress: `0x${string}`) {
     }
   }
 
+  const stepLabel: string | null = (() => {
+    switch (step) {
+      case "operator": return "APPROVING OPERATOR…";
+      case "encrypting": return "ENCRYPTING…";
+      case "buyIntent": return "SUBMITTING INTENT…";
+      case "buyDecrypting": return "WAITING FOR RELAYER…";
+      case "buyExecute": return "EXECUTING SWAP…";
+      case "sellIntent": return "SUBMITTING SELL…";
+      case "sellDecrypting": return "DECRYPTING CLAMP…";
+      case "sellExecute": return "SETTLING SELL…";
+      case "claimIntent": return "SNAPSHOTTING…";
+      case "claimDecrypting": return "DECRYPTING PAYOUT…";
+      case "claimExecute": return "PAYING OUT cUSDT…";
+      default: return null;
+    }
+  })();
+
   return {
     buy,
     sell,
@@ -280,6 +285,7 @@ export function useBet(marketAddress: `0x${string}`) {
     ensureOperator,
     isOperatorSet: !!isOperatorSet,
     step,
+    stepLabel,
     isLoading: step !== "idle" && step !== "done",
     error,
     clearError: () => setError(null),

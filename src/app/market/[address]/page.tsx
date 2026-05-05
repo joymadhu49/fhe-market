@@ -72,6 +72,7 @@ export default function MarketPage({ params }: Props) {
     sell,
     claimWinnings,
     isLoading: isActing,
+    stepLabel,
     error: txError,
     clearError,
   } = useBet(addr);
@@ -589,7 +590,7 @@ export default function MarketPage({ params }: Props) {
                     {isActing ? (
                       <span className="inline-flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        WORKING…
+                        {stepLabel ?? "WORKING…"}
                       </span>
                     ) : (
                       `BUY ${side} · $${amountNum.toFixed(2)}`
@@ -702,7 +703,7 @@ export default function MarketPage({ params }: Props) {
                       }}
                       disabled={isActing}
                     >
-                      {isActing ? "CLAIMING…" : "CLAIM WINNINGS"}
+                      {isActing ? (stepLabel ?? "CLAIMING…") : "CLAIM WINNINGS"}
                     </Btn>
                   )}
                 </div>
