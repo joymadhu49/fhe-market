@@ -1,29 +1,97 @@
+import PixelDebris from "@/components/ui/PixelDebris";
+import SqDot from "@/components/ui/SqDot";
+
 export default function LeaderboardPage() {
   return (
-    <div className="bg-[#0b0e12]">
-      <div className="px-4 sm:px-6 lg:px-8 pt-7 pb-5">
-        <div className="mb-[18px]">
-          <h1 className="m-0 text-[22px] font-semibold tracking-[-0.4px] text-[#f3f4f6]">
-            Leaderboard
+    <div style={{ background: "var(--g0)" }}>
+      {/* Yellow hero */}
+      <section
+        className="relative overflow-hidden"
+        style={{ background: "var(--y)", borderBottom: "2px solid var(--k)" }}
+      >
+        <PixelDebris count={16} seed={9} />
+        <div className="relative z-[3] mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10">
+          <div className="eyebrow" style={{ color: "var(--k)" }}>
+            LEADERBOARD
+          </div>
+          <h1
+            className="display m-0 mt-2"
+            style={{
+              fontSize: "clamp(28px, 5vw, 52px)",
+              lineHeight: 1,
+              color: "var(--k)",
+              letterSpacing: "-0.03em",
+            }}
+          >
+            Top traders. By P&L. By volume.
           </h1>
-          <div className="mono label text-[#6b7280] mt-1">
-            Top traders · by P&L · by volume
+          <div
+            className="mono mt-2 text-[10px] tracking-[0.12em] font-bold"
+            style={{ color: "var(--k)" }}
+          >
+            REALIZED P&L · VOLUME · WIN RATE
           </div>
         </div>
+      </section>
 
-        <div className="border border-dashed border-[#1f2630] rounded-[4px] py-20 text-center">
-          <div className="inline-flex items-center gap-[8px] mb-3">
-            <span className="w-[8px] h-[8px] rounded-full bg-[#f59e0b] animate-live" />
-            <span className="mono label text-[#f59e0b]">Coming soon</span>
+      {/* Coming soon stage */}
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-16">
+        <div
+          className="relative overflow-hidden"
+          style={{
+            background: "var(--w)",
+            border: "2px solid var(--k)",
+          }}
+        >
+          <PixelDebris count={12} seed={3} />
+          <div className="relative z-[3] py-24 sm:py-32 px-6 text-center flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 mb-6">
+              <SqDot kind="open" size={8} />
+              <span
+                className="mono text-[11px] tracking-[0.18em] font-bold"
+                style={{ color: "var(--k)" }}
+              >
+                COMING SOON
+              </span>
+              <SqDot kind="open" size={8} />
+            </div>
+
+            <h2
+              className="display m-0"
+              style={{
+                fontSize: "clamp(56px, 11vw, 160px)",
+                lineHeight: 0.85,
+                color: "var(--k)",
+                letterSpacing: "-0.05em",
+                fontWeight: 700,
+              }}
+            >
+              BETTER
+            </h2>
+            <h2
+              className="display m-0 mt-2"
+              style={{
+                fontSize: "clamp(56px, 11vw, 160px)",
+                lineHeight: 0.85,
+                letterSpacing: "-0.05em",
+                fontWeight: 700,
+                background: "var(--y)",
+                color: "var(--k)",
+                padding: "0.05em 0.25em",
+                border: "2px solid var(--k)",
+              }}
+            >
+              COMING SOON
+            </h2>
+
+            <p
+              className="mono mt-8 max-w-[520px] text-[12px] tracking-[0.06em]"
+              style={{ color: "var(--g2)" }}
+            >
+              INDEXING ON-CHAIN BET + CLAIM EVENTS OFF-CHAIN.
+              RANKINGS LIGHT UP NEXT CYCLE.
+            </p>
           </div>
-          <div className="text-[15px] font-semibold text-[#f3f4f6]">
-            Leaderboards are on the way
-          </div>
-          <p className="mx-auto mt-2 max-w-[420px] text-[12.5px] text-[#8b96a5]">
-            We&apos;re indexing on-chain bet and claim events off-chain so we can rank traders
-            by realized P&amp;L, volume, and win rate. Expect this to light up once the
-            indexer ships in the next cycle.
-          </p>
         </div>
       </div>
     </div>

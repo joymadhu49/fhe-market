@@ -43,7 +43,14 @@ next-env.d.ts
 # hardhat build outputs
 /artifacts
 /cache
+/typechain-types
+/deployments
 
 # graphify knowledge graph outputs (regenerable)
 graphify-out/
 video/
+
+# session scratch files (internal)
+HANDOFF.md
+fhevmTemp/
+.claude/

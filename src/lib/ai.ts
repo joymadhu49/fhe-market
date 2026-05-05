@@ -51,7 +51,7 @@ export function buildSystemPrompt(nowIso: string, coinPrices: PriceMap | null): 
         .join("\n")
     : "- (no live prices available)";
 
-  return `You are Propex's market-proposal engine. Given a free-form admin instruction,
+  return `You are FHE Market's market-proposal engine. Given a free-form admin instruction,
 you produce a JSON object describing a binary (YES/NO) prediction market.
 
 CURRENT DATE (UTC): ${nowIso}
@@ -74,6 +74,20 @@ JSON SCHEMA (return EXACTLY this shape, no extra keys, no markdown, no prose):
     "targetUsd": number          // sensible target relative to startUsd (up-bet or down-bet)
   }
 }
+
+QUESTION-PHRASING (CRITICAL):
+- DO NOT START EVERY QUESTION WITH "Will". Vary the opening across calls.
+- Use diverse interrogative patterns. Acceptable openings include:
+  "Can ...", "Does ...", "Has ...", "Is ...", "How likely ...", "By <date>, will ...",
+  "Before <date>, ...?", "By the close of ...?", "Over/under ...?",
+  declarative-then-question ("ETH closes above $4k by Dec 31?"),
+  conditional ("If <X> happens, will ...?"), "Which ... first?", or strong noun-led
+  framing ("Mainnet ship date before <Q>?", "BTC new ATH this cycle?").
+- Mix sentence rhythm: short punchy headlines, journalistic phrasings, market-style
+  "over/under" framings, and conditional bets. Aim for variety like a Polymarket /
+  Kalshi front page rather than 50 identical "Will X happen by Y?" lines.
+- Keep the question concrete and binary-resolvable; the source of truth still lives
+  in "description".
 
 RULES:
 - Output PURE JSON. No backticks, no markdown, no commentary.

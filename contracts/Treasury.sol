@@ -1,31 +1,30 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
+import { FHE, euint64 } from "@fhevm/solidity/lib/FHE.sol";
+import { ZamaEthereumConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+import { IERC7984 } from "./interfaces/IERC7984.sol";
 
 /// @title Treasury
-/// @notice Collects platform fees AND seeds FPMM liquidity for new markets.
-contract Treasury is Ownable {
-    using SafeERC20 for IERC20;
-
-    IERC20  public immutable usdc;
+/// @notice Holds cUSDT (ERC-7984) for the arcbet-fhe protocol: seeds new market
+///         liquidity and receives platform fees. The on-chain cUSDT balance is
+///         encrypted; only the owner (via EIP-712 user-decrypt) can read it.
+contract Treasury is ZamaEthereumConfig, Ownable {
+    IERC7984 public immutable cUSDT;
     address public immutable factory;
 
-    // fee basis points (100 = 1%)
+    /// fee basis points (100 = 1%)
     uint256 public feeBps = 150; // 1.5%
     uint256 public constant MAX_FEE_BPS = 500; // 5% max
 
-    uint256 public totalCollected;       // lifetime fees received from markets
-    uint256 public totalSeededOut;       // lifetime USDC sent to markets as LP seed
-    uint256 public totalReturnedFromLPs; // residual USDC returned from resolved markets
+    /// Lifetime cleartext seed cUSDT sent to markets. Public.
+    uint256 public totalSeededOut;
 
-    event FeeReceived(address indexed market, uint256 amount);
-    event FeeUpdated(uint256 oldBps, uint256 newBps);
-    event Withdrawn(address indexed to, uint256 amount);
-    event MarketFunded(address indexed factory, uint256 amount);
-    event LPResidualReceived(address indexed market, uint256 amount);
+    event FeeBpsUpdated(uint256 oldBps, uint256 newBps);
+    event MarketFunded(address indexed market, uint64 amount);
+    event Withdrawn(address indexed to, uint64 amount);
 
     error NotFactory();
 
@@ -34,48 +33,42 @@ contract Treasury is Ownable {
         _;
     }
 
-    constructor(address _usdc, address _owner, address _factory) Ownable(_owner) {
-        usdc    = IERC20(_usdc);
+    constructor(address _cUSDT, address _owner, address _factory) Ownable(_owner) {
+        cUSDT = IERC7984(_cUSDT);
         factory = _factory;
+        // Allow caller (owner / view fns) to read the treasury's encrypted cUSDT
+        // balance via standard ERC-7984 user-decrypt flow. Nothing to wire here —
+        // cUSDT itself manages ACL on its internal balance mappings.
     }
 
-    /// @notice Markets call this to deposit their fees.
-    function depositFee(uint256 amount) external {
-        usdc.safeTransferFrom(msg.sender, address(this), amount);
-        totalCollected += amount;
-        emit FeeReceived(msg.sender, amount);
-    }
-
-    /// @notice Factory calls this at market-creation to pull LP seed.
-    function fundMarket(uint256 amount) external onlyFactory {
+    /// @notice Factory pulls a market seed. We send cUSDT directly to `dest`
+    ///         (the new market), so the factory does not need to hold cUSDT.
+    function fundMarket(address dest, uint64 amount) external onlyFactory {
         totalSeededOut += amount;
-        usdc.safeTransfer(factory, amount);
-        emit MarketFunded(factory, amount);
+        euint64 enc = FHE.asEuint64(amount);
+        FHE.allowTransient(enc, address(cUSDT));
+        cUSDT.confidentialTransfer(dest, enc);
+        emit MarketFunded(dest, amount);
     }
 
-    /// @notice Factory returns a market's residual USDC after resolution.
-    function receiveLPResidual(address market, uint256 amount) external onlyFactory {
-        usdc.safeTransferFrom(factory, address(this), amount);
-        totalReturnedFromLPs += amount;
-        emit LPResidualReceived(market, amount);
+    /// @notice Owner-only withdraw of a cleartext amount (for treasury rebalancing).
+    ///         The transferred amount is publicly logged; the on-chain balance
+    ///         remains encrypted at the cUSDT layer.
+    function withdraw(address to, uint64 amount) external onlyOwner {
+        euint64 enc = FHE.asEuint64(amount);
+        FHE.allowTransient(enc, address(cUSDT));
+        cUSDT.confidentialTransfer(to, enc);
+        emit Withdrawn(to, amount);
     }
 
-    /// @notice Update platform fee (bounded by MAX_FEE_BPS).
     function setFeeBps(uint256 _feeBps) external onlyOwner {
         require(_feeBps <= MAX_FEE_BPS, "Fee too high");
-        emit FeeUpdated(feeBps, _feeBps);
+        emit FeeBpsUpdated(feeBps, _feeBps);
         feeBps = _feeBps;
     }
 
-    /// @notice Withdraw surplus USDC to owner.
-    ///         Ops should leave enough behind to seed future markets.
-    function withdraw(uint256 amount) external onlyOwner {
-        usdc.safeTransfer(msg.sender, amount);
-        emit Withdrawn(msg.sender, amount);
-    }
-
-    /// @notice Total USDC held by the treasury (fees + LP capital pool + returns).
-    function balance() external view returns (uint256) {
-        return usdc.balanceOf(address(this));
+    /// @notice Encrypted cUSDT balance of treasury. Owner can user-decrypt off-chain.
+    function balanceHandle() external view returns (euint64) {
+        return cUSDT.confidentialBalanceOf(address(this));
     }
 }

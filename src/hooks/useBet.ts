@@ -9,12 +9,12 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { parseUSDC } from "@/lib/utils";
-import { USDC_ADDRESS } from "@/lib/constants";
-import { PREDICTION_MARKET_ABI, ERC20_ABI } from "@/lib/abi";
+import { CUSDT_ADDRESS, OPERATOR_WINDOW_SECONDS } from "@/lib/constants";
+import { PREDICTION_MARKET_ABI, ERC7984_ABI } from "@/lib/abi";
 import { BetSide } from "@/types";
 import { txErrorMessage } from "@/lib/errors";
+import { encryptU64, publicDecrypt } from "@/lib/fhevm";
 
-/** Default 1% slippage tolerance applied to previews. */
 const SLIPPAGE_BPS = 100n;
 
 function withSlippage(expected: bigint, bps: bigint = SLIPPAGE_BPS): bigint {
@@ -22,15 +22,39 @@ function withSlippage(expected: bigint, bps: bigint = SLIPPAGE_BPS): bigint {
   return expected > slack ? expected - slack : 0n;
 }
 
+/** Poll a tx-completion view: waits until predicate returns true or `timeoutMs` elapses. */
+async function pollUntil<T>(read: () => Promise<T>, ok: (v: T) => boolean, intervalMs = 3_000, timeoutMs = 90_000): Promise<T> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const v = await read();
+    if (ok(v)) return v;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error("Relayer timeout — try executing manually from the panel below");
+}
+
+type Step =
+  | "idle"
+  | "operator"
+  | "encrypting"
+  | "buyIntent"
+  | "buyDecrypting"
+  | "buyExecute"
+  | "sellIntent"
+  | "sellDecrypting"
+  | "sellExecute"
+  | "claimIntent"
+  | "claimDecrypting"
+  | "claimExecute"
+  | "done";
+
 export function useBet(marketAddress: `0x${string}`) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState<"idle" | "approving" | "buying" | "selling" | "done">("idle");
+  const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  /** Invalidate every wagmi read-contract query so positions, balances,
-   *  shares, and pool reserves refresh everywhere after a write. */
   const invalidateAllReads = useCallback(() => {
     queryClient.invalidateQueries({
       predicate: (q) => {
@@ -40,30 +64,37 @@ export function useBet(marketAddress: `0x${string}`) {
     });
   }, [queryClient]);
 
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: USDC_ADDRESS,
-    abi: ERC20_ABI,
-    functionName: "allowance",
+  const { data: isOperatorSet, refetch: refetchOperator } = useReadContract({
+    address: CUSDT_ADDRESS,
+    abi: ERC7984_ABI,
+    functionName: "isOperator",
     args: address ? [address, marketAddress] : undefined,
     query: { enabled: !!address },
   });
 
-  const { data: usdcBalance, isLoading: balanceLoading, refetch: refetchBalance } =
-    useReadContract({
-      address: USDC_ADDRESS,
-      abi: ERC20_ABI,
-      functionName: "balanceOf",
-      args: address ? [address] : undefined,
-      query: { enabled: !!address },
-    });
-
   const { writeContractAsync } = useWriteContract();
 
+  /** Ensure the market has cUSDT operator status from the user. Idempotent. */
+  async function ensureOperator() {
+    if (isOperatorSet) return;
+    setStep("operator");
+    toast.loading("Approving market as cUSDT operator…", { id: "bet" });
+    const until = Math.floor(Date.now() / 1000) + OPERATOR_WINDOW_SECONDS;
+    const hash = await writeContractAsync({
+      address: CUSDT_ADDRESS,
+      abi: ERC7984_ABI,
+      functionName: "setOperator",
+      args: [marketAddress, until],
+    });
+    if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+    await refetchOperator();
+  }
+
   /**
-   * Buy shares with USDC via the FPMM.
-   * @param side       "YES" or "NO"
-   * @param amountStr  USDC amount as decimal string (e.g. "10.50")
-   * @param previewShares  Optional preview from previewBuy(); used for slippage floor.
+   * Buy: 2-tx flow. Encrypts the bet amount, submits `buyIntent`, waits for the
+   * relayer to public-decrypt the (clamped) transferred ciphertext, then calls
+   * `executeBuy(user, cleartext, proof)` which runs the CPMM math and mints
+   * encrypted shares to the user.
    */
   async function buy(side: BetSide, amountStr: string, previewShares?: bigint) {
     setError(null);
@@ -73,37 +104,48 @@ export function useBet(marketAddress: `0x${string}`) {
       toast.error(msg);
       return;
     }
-
     const amount = parseUSDC(amountStr);
     const minSharesOut = previewShares ? withSlippage(previewShares) : 0n;
 
     try {
-      if (!allowance || (allowance as bigint) < amount) {
-        setStep("approving");
-        toast.loading("Approving USDC…", { id: "bet" });
-        const hash = await writeContractAsync({
-          address: USDC_ADDRESS,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [marketAddress, amount],
-        });
-        if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
-        await refetchAllowance();
-      }
+      await ensureOperator();
 
-      setStep("buying");
-      toast.loading(`Buying ${side}…`, { id: "bet" });
-      const hash = await writeContractAsync({
+      setStep("encrypting");
+      toast.loading("Encrypting bet…", { id: "bet" });
+      const { handle, inputProof } = await encryptU64(marketAddress, address, amount);
+
+      setStep("buyIntent");
+      toast.loading("Submitting encrypted bet…", { id: "bet" });
+      const intentHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
-        functionName: "buy",
-        args: [side === "YES", amount, minSharesOut],
+        functionName: "buyIntent",
+        args: [side === "YES", handle, inputProof, minSharesOut],
       });
-      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: intentHash });
+
+      setStep("buyDecrypting");
+      toast.loading("Waiting for relayer to publicly decrypt amount…", { id: "bet" });
+      const pendingHandle = (await publicClient!.readContract({
+        address: marketAddress,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: "pendingBuyHandle",
+        args: [address],
+      })) as `0x${string}`;
+      const { value, proof } = await publicDecrypt(pendingHandle);
+
+      setStep("buyExecute");
+      toast.loading("Executing CPMM swap…", { id: "bet" });
+      const execHash = await writeContractAsync({
+        address: marketAddress,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: "executeBuy",
+        args: [address, value, proof],
+      });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: execHash });
 
       setStep("done");
-      toast.success(`${side} shares bought`, { id: "bet" });
-      await refetchBalance();
+      toast.success(`${side} shares bought (encrypted)`, { id: "bet" });
       invalidateAllReads();
       setTimeout(() => setStep("idle"), 1500);
     } catch (e: unknown) {
@@ -115,44 +157,59 @@ export function useBet(marketAddress: `0x${string}`) {
   }
 
   /**
-   * Sell existing shares for USDC via the FPMM.
-   * @param side          "YES" or "NO"
-   * @param sharesIn      raw bigint shares (USDC base units — 6dp)
-   * @param previewGross  Optional preview from previewSell(); used for slippage floor (pre-fee).
+   * Sell: 2-tx flow. The intent encrypts the desired share count and clamps it
+   * branchlessly to the user's encrypted balance. The relayer then reveals the
+   * clamped value, and `executeSell` runs the CPMM and pays cUSDT.
    */
   async function sell(side: BetSide, sharesIn: bigint, previewGross?: bigint) {
     setError(null);
     if (!address) {
-      const msg = "Connect wallet first";
-      setError(msg);
-      toast.error(msg);
+      toast.error("Connect wallet first");
       return;
     }
     if (sharesIn <= 0n) {
       toast.error("Sell amount must be positive");
       return;
     }
-
-    // Protocol applies fee on top of gross; slippage guard is on *post-fee* amountOut.
-    // Here we pass minAmountOut = (previewGross * (1 - fee))·(1 - slippage). With 1.5% fee + 1% slippage ≈ preview·0.975.
-    const minAmountOut = previewGross
-      ? withSlippage((previewGross * 9_850n) / 10_000n) // subtract 1.5% fee first
-      : 0n;
+    const minAmountOut = previewGross ? withSlippage((previewGross * 9_850n) / 10_000n) : 0n;
 
     try {
-      setStep("selling");
-      toast.loading(`Selling ${side}…`, { id: "bet" });
-      const hash = await writeContractAsync({
+      setStep("encrypting");
+      toast.loading("Encrypting sell amount…", { id: "bet" });
+      const { handle, inputProof } = await encryptU64(marketAddress, address, sharesIn);
+
+      setStep("sellIntent");
+      toast.loading("Submitting sell intent…", { id: "bet" });
+      const intentHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
-        functionName: "sell",
-        args: [side === "YES", sharesIn, minAmountOut],
+        functionName: "sellIntent",
+        args: [side === "YES", handle, inputProof, minAmountOut],
       });
-      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: intentHash });
+
+      setStep("sellDecrypting");
+      toast.loading("Decrypting clamped share count…", { id: "bet" });
+      const pendingHandle = (await publicClient!.readContract({
+        address: marketAddress,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: "pendingSellHandle",
+        args: [address],
+      })) as `0x${string}`;
+      const { value, proof } = await publicDecrypt(pendingHandle);
+
+      setStep("sellExecute");
+      toast.loading("Settling sell…", { id: "bet" });
+      const execHash = await writeContractAsync({
+        address: marketAddress,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: "executeSell",
+        args: [address, value, proof],
+      });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: execHash });
 
       setStep("done");
       toast.success(`${side} shares sold`, { id: "bet" });
-      await refetchBalance();
       invalidateAllReads();
       setTimeout(() => setStep("idle"), 1500);
     } catch (e: unknown) {
@@ -163,23 +220,56 @@ export function useBet(marketAddress: `0x${string}`) {
     }
   }
 
+  /**
+   * Claim winnings: 2-tx flow. The intent snapshots the user's encrypted
+   * winning balance and zeroes it; the relayer reveals the cleartext amount;
+   * `executeClaim` pays cUSDT.
+   */
   async function claimWinnings() {
     setError(null);
+    if (!address) {
+      toast.error("Connect wallet first");
+      return;
+    }
     try {
-      toast.loading("Claiming winnings…", { id: "claim" });
-      const hash = await writeContractAsync({
+      setStep("claimIntent");
+      toast.loading("Snapshotting winnings…", { id: "claim" });
+      const intentHash = await writeContractAsync({
         address: marketAddress,
         abi: PREDICTION_MARKET_ABI,
-        functionName: "claimWinnings",
+        functionName: "claimIntent",
       });
-      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: intentHash });
+
+      setStep("claimDecrypting");
+      toast.loading("Decrypting winning balance…", { id: "claim" });
+      const pendingHandle = (await publicClient!.readContract({
+        address: marketAddress,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: "pendingClaimHandle",
+        args: [address],
+      })) as `0x${string}`;
+      const { value, proof } = await publicDecrypt(pendingHandle);
+
+      setStep("claimExecute");
+      toast.loading("Paying out cUSDT…", { id: "claim" });
+      const execHash = await writeContractAsync({
+        address: marketAddress,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: "executeClaim",
+        args: [address, value, proof],
+      });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: execHash });
+
+      setStep("done");
       toast.success("Winnings claimed", { id: "claim" });
-      await refetchBalance();
       invalidateAllReads();
+      setTimeout(() => setStep("idle"), 1500);
     } catch (e: unknown) {
       const msg = txErrorMessage(e);
       setError(msg);
       toast.error(msg, { id: "claim" });
+      setStep("idle");
     }
   }
 
@@ -187,11 +277,15 @@ export function useBet(marketAddress: `0x${string}`) {
     buy,
     sell,
     claimWinnings,
+    ensureOperator,
+    isOperatorSet: !!isOperatorSet,
     step,
-    isLoading: step !== "idle",
-    usdcBalance: usdcBalance as bigint | undefined,
-    balanceLoading,
+    isLoading: step !== "idle" && step !== "done",
     error,
     clearError: () => setError(null),
+    // Legacy compat: cUSDT balance is now confidential — the betting UI hides it.
+    usdcBalance: undefined as bigint | undefined,
+    balanceLoading: false,
+    pollUntil,
   };
 }

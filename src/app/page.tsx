@@ -7,6 +7,11 @@ import { usePrices } from "@/components/PriceProvider";
 import { parseCryptoDescription } from "@/lib/cryptoMarkets";
 import { fmtUSDCCompact } from "@/lib/utils";
 import { MarketData } from "@/types";
+import PixelDebris from "@/components/ui/PixelDebris";
+import Btn from "@/components/ui/Btn";
+import Chip from "@/components/ui/Chip";
+import SqDot from "@/components/ui/SqDot";
+import SectionHead from "@/components/ui/SectionHead";
 
 type SortKey = "trending" | "new" | "closing";
 
@@ -84,7 +89,6 @@ export default function Home() {
   );
 
   const visible = useMemo(() => {
-    // Hide resolved/cancelled markets from the main feed — they live at their detail URL.
     let list = loadedEntries.filter((e) => !e.market.resolved);
     if (activeCategory !== "All") list = list.filter((e) => e.market.category === activeCategory);
     if (search) {
@@ -123,17 +127,94 @@ export default function Home() {
         <MarketLoader key={a} address={a} onLoad={handleLoad} />
       ))}
 
-      {/* Search header */}
-      <div className="border-b border-[#1f2630] px-4 sm:px-6 lg:px-8 pt-7 pb-5">
-        <div className="flex items-baseline gap-[14px] mb-[18px] flex-wrap">
-          <h1 className="m-0 text-[22px] font-semibold tracking-[-0.4px] text-[#f3f4f6]">Markets</h1>
-          <div className="mono label text-[#6b7280]">
-            {openMarkets} active · {fmtUSDCCompact(totalVolume)} volume
+      {/* HERO BAND — compact, brutalist. Carries headline + live stats. */}
+      <section
+        className="relative overflow-hidden"
+        style={{ background: "var(--y)", borderBottom: "2px solid var(--k)" }}
+      >
+        <PixelDebris count={10} seed={11} />
+        <div className="relative z-[3] mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div className="flex-1 min-w-[260px]">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <div className="eyebrow" style={{ color: "var(--k)" }}>
+                  ▮ CONFIDENTIAL MARKETS
+                </div>
+                <h1
+                  className="display m-0"
+                  style={{
+                    fontSize: "clamp(20px, 2.4vw, 28px)",
+                    lineHeight: 1.1,
+                    color: "var(--k)",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  Bet without leaking your position.
+                </h1>
+              </div>
+              <div
+                className="mono mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] tracking-[0.1em]"
+                style={{ color: "var(--k)" }}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <SqDot kind="open" size={6} /> LIVE ON SEPOLIA
+                </span>
+                <span>cUSDT · ERC-7984</span>
+                <span>
+                  <span style={{ background: "var(--k)", color: "var(--y)", padding: "1px 5px" }}>
+                    euint64
+                  </span>{" "}
+                  CPMM · 2-TX
+                </span>
+              </div>
+            </div>
+
+            {/* Inline stats */}
+            <div
+              className="flex items-center gap-5 shrink-0"
+              style={{ color: "var(--k)" }}
+            >
+              <Stat n={openMarkets ? `${openMarkets}` : "—"} l="OPEN MARKETS" />
+              <Stat n={fmtUSDCCompact(totalVolume)} l="TOTAL POOL" />
+              <Stat n="100%" l="ENCRYPTED HOLDERS" last />
+            </div>
+
+            <div className="flex gap-2 shrink-0">
+              <a href="#markets">
+                <Btn kind="primary" size="sm">OPEN MARKETS →</Btn>
+              </a>
+              <a href="/docs">
+                <Btn kind="secondary" size="sm">DOCS</Btn>
+              </a>
+            </div>
           </div>
         </div>
-        <div className="flex gap-3 items-center">
-          <div className="flex-1 flex items-center gap-[10px] bg-[#131820] border border-[#1f2630] px-3 py-2 rounded-[4px]">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#6b7280" strokeWidth="1.5" aria-hidden>
+      </section>
+
+      {/* MARKETS */}
+      <section
+        id="markets"
+        className="px-4 sm:px-6 lg:px-8 py-10"
+        style={{ background: "var(--g0)" }}
+      >
+       <div className="mx-auto max-w-[1400px]">
+        <SectionHead
+          eyebrow="01 · MARKETS"
+          title="Trending markets"
+          right={
+            <div className="mono text-[10px] tracking-[0.14em]" style={{ color: "var(--g2)" }}>
+              {openMarkets} ACTIVE · {fmtUSDCCompact(totalVolume).toUpperCase()} VOLUME
+            </div>
+          }
+        />
+
+        {/* Search + filter row */}
+        <div className="flex flex-col md:flex-row gap-3 mb-6">
+          <div
+            className="flex-1 flex items-center gap-2.5 px-3 py-2"
+            style={{ background: "var(--w)", border: "2px solid var(--k)" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="var(--g2)" strokeWidth="1.6" aria-hidden>
               <circle cx="6" cy="6" r="4.5" />
               <path d="M9.5 9.5 L13 13" />
             </svg>
@@ -141,68 +222,79 @@ export default function Home() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search markets, categories, addresses…"
-              className="flex-1 bg-transparent border-none outline-none text-[#f3f4f6] text-[13px]"
+              className="flex-1 bg-transparent border-none outline-none text-[13px]"
+              style={{ color: "var(--k)" }}
             />
-            <span className="mono text-[10px] text-[#6b7280] border border-[#1f2630] px-[5px] py-[1px] rounded-[2px] tracking-[0.04em]">
+            <span
+              className="mono text-[10px] tracking-[0.04em] px-1.5 py-[1px]"
+              style={{ color: "var(--g2)", border: "1px solid var(--k)" }}
+            >
               ⌘K
             </span>
           </div>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="mono px-3 py-2 text-[12px] outline-none"
+            style={{ background: "var(--w)", border: "2px solid var(--k)", color: "var(--k)" }}
+          >
+            <option value="trending">SORT · 24H VOLUME</option>
+            <option value="new">SORT · NEW</option>
+            <option value="closing">SORT · CLOSING SOON</option>
+          </select>
         </div>
-      </div>
 
-      {/* Filter bar */}
-      <div className="border-b border-[#1f2630] px-4 sm:px-6 lg:px-8 h-[48px] flex items-center gap-[6px] sticky top-[86px] z-30 bg-[#0b0e12] overflow-x-auto no-scrollbar">
-        {CATEGORIES.map((c) => {
-          const active = activeCategory === c;
-          return (
-            <button
-              key={c}
-              onClick={() => setActiveCategory(c)}
-              className="px-[11px] py-[5px] rounded-[3px] text-[12px] font-medium shrink-0 cursor-pointer transition-colors"
-              style={{
-                background: active ? "#1f2630" : "transparent",
-                border: `1px solid ${active ? "#2a3340" : "transparent"}`,
-                color: active ? "#f3f4f6" : "#8b96a5",
-              }}
-            >
-              {c}
-            </button>
-          );
-        })}
-        <div className="flex-1" />
-        <span className="mono label text-[#6b7280] hidden sm:inline">Sort</span>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
-          className="bg-[#131820] border border-[#1f2630] text-[#f3f4f6] px-[10px] py-[5px] rounded-[3px] text-[12px] cursor-pointer outline-none"
-        >
-          <option value="trending">24h Volume</option>
-          <option value="new">New</option>
-          <option value="closing">Closing soon</option>
-        </select>
-      </div>
+        {/* Category chips */}
+        <div className="flex gap-2 mb-7 overflow-x-auto no-scrollbar pb-1">
+          {CATEGORIES.map((c) => {
+            const active = activeCategory === c;
+            return (
+              <button
+                key={c}
+                onClick={() => setActiveCategory(c)}
+                className="shrink-0 cursor-pointer"
+              >
+                <Chip color={active ? "k" : "w"}>{c.toUpperCase()}</Chip>
+              </button>
+            );
+          })}
+        </div>
 
-      {/* Grid */}
-      <div className="px-4 sm:px-6 lg:px-8 py-7">
+        {/* Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="h-56 rounded-[4px] border border-[#1f2630] skeleton" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-64 skeleton"
+                style={{ border: "2px solid var(--k)" }}
+              />
             ))}
           </div>
         ) : !addresses || addresses.length === 0 ? (
-          <div className="border border-dashed border-[#1f2630] rounded-[4px] py-20 text-center">
-            <div className="text-[14px] font-medium text-[#f3f4f6]">No markets yet</div>
-            <p className="mt-1 text-[12.5px] text-[#6b7280]">
-              Deploy contracts and launch the first daily batch from the admin panel.
+          <div
+            className="py-20 text-center"
+            style={{ border: "2px dashed var(--k)" }}
+          >
+            <div className="display" style={{ fontSize: 22, color: "var(--k)" }}>
+              No markets yet
+            </div>
+            <p
+              className="mono mt-2 text-[11px] tracking-[0.06em]"
+              style={{ color: "var(--g2)" }}
+            >
+              DEPLOY CONTRACTS AND LAUNCH FROM THE ADMIN PANEL.
             </p>
           </div>
         ) : visible.length === 0 && loadedEntries.length === addrList.length ? (
-          <div className="border border-dashed border-[#1f2630] rounded-[4px] py-16 text-center text-[12.5px] text-[#6b7280]">
-            No markets match your filters.
+          <div
+            className="py-16 text-center mono text-[12px] tracking-[0.06em]"
+            style={{ border: "2px dashed var(--k)", color: "var(--g2)" }}
+          >
+            NO MARKETS MATCH YOUR FILTERS.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[14px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {visible.map((e) => {
               const cryptoMeta = parseCryptoDescription(e.market.description);
               const livePrice = cryptoMeta ? prices?.[cryptoMeta.coin]?.usd : undefined;
@@ -220,12 +312,34 @@ export default function Home() {
             {addrList.length > loadedEntries.length &&
               Array.from({ length: Math.min(3, addrList.length - loadedEntries.length) }).map(
                 (_, i) => (
-                  <div key={`skel-${i}`} className="h-56 rounded-[4px] border border-[#1f2630] skeleton" />
+                  <div
+                    key={`skel-${i}`}
+                    className="h-64 skeleton"
+                    style={{ border: "2px solid var(--k)" }}
+                  />
                 ),
               )}
           </div>
         )}
-      </div>
+       </div>
+      </section>
+
     </>
+  );
+}
+
+function Stat({ n, l, last }: { n: string; l: string; last?: boolean }) {
+  return (
+    <div
+      className="hidden md:block pr-5"
+      style={{ borderRight: last ? "none" : "2px solid var(--k)" }}
+    >
+      <div className="display" style={{ fontSize: 22, lineHeight: 1, color: "var(--k)" }}>
+        {n}
+      </div>
+      <div className="mono mt-0.5 text-[9px] tracking-[0.14em]" style={{ color: "var(--k)" }}>
+        {l}
+      </div>
+    </div>
   );
 }

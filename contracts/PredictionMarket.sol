@@ -1,35 +1,35 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { FHE, euint64, externalEuint64, ebool } from "@fhevm/solidity/lib/FHE.sol";
+import { ZamaEthereumConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { IERC7984 } from "./interfaces/IERC7984.sol";
+
 interface ITreasury {
-    function depositFee(uint256 amount) external;
     function feeBps() external view returns (uint256);
 }
 
-/// @title PredictionMarket (FPMM — Fixed-Product Market Maker)
-/// @notice Binary YES/NO prediction market with a Polymarket-style CPMM:
-///         users can buy AND sell shares at any time before resolution.
+/// @title PredictionMarket (FHEVM CPMM)
+/// @notice Binary YES/NO prediction market with encrypted per-user share balances
+///         backed by cUSDT (ERC-7984). Buy/sell/claim use a 2-step
+///         "intent → execute" pattern: an intent locks an encrypted ciphertext
+///         and marks it publicly decryptable; the execute step verifies the
+///         relayer-provided cleartext + KMS proof via `FHE.checkSignatures` and
+///         then runs CPMM math + cUSDT settlement on the verified value.
 ///
-///         Mechanics (analogous to Polymarket FPMM):
-///         - Pool holds `yesReserve` YES shares + `noReserve` NO shares; invariant yesReserve*noReserve = k.
-///         - 1 YES + 1 NO = 1 USDC (conditional-token split/merge).
-///         - BUY YES with X USDC: split X USDC → X YES + X NO; deposit all NO to pool;
-///           swap pool NO→YES through CPMM; user receives `X + Δy` YES.
-///         - SELL `sharesIn` YES for USDC: solve a quadratic to find amountOut such that
-///           swapping YES→NO plus merging paired YES+NO yields exactly amountOut USDC.
-///         - At RESOLVE: winning shares redeem for 1 USDC each; losing shares → 0.
-///           Residual USDC (from the pool's winning-side reserve) belongs to the LP (treasury).
-///         - FEES: a percentage of every buy/sell `amountIn`/`amountOut` is routed to treasury.
-contract PredictionMarket is ReentrancyGuard {
-    using SafeERC20 for IERC20;
+///         Privacy model:
+///         - Per-user YES/NO share balances: ENCRYPTED (`euint64`).
+///         - Pool reserves (`yesReserve`, `noReserve`): PUBLIC (CPMM pricing
+///           requires cleartext arithmetic).
+///         - Bet/sell/claim amounts: revealed at execute-time (relayer
+///           publicDecrypt). Linkability across actions stays low because the
+///           encrypted balance hides cumulative position.
+contract PredictionMarket is ZamaEthereumConfig, ReentrancyGuard {
     using Math for uint256;
 
-    // ── State ──────────────────────────────────────────────
     enum Outcome { UNRESOLVED, YES, NO, CANCELLED }
 
     struct Market {
@@ -38,49 +38,78 @@ contract PredictionMarket is ReentrancyGuard {
         string  category;
         string  imageUrl;
         uint256 resolutionTime;
-        uint256 seedLiquidity;  // `L` — initial USDC seeded by LP (treasury)
+        uint64  seedLiquidity;
         Outcome outcome;
         bool    resolved;
     }
 
-    IERC20     public immutable usdc;
-    ITreasury  public immutable treasury;
-    address    public immutable factory;
+    struct PendingBuy {
+        bool    active;
+        bool    isYes;
+        uint256 minSharesOut;
+    }
+
+    struct PendingSell {
+        bool    active;
+        bool    isYes;
+        uint256 minAmountOut;
+    }
+
+    struct PendingClaim {
+        bool    active;
+        Outcome outcome;
+    }
+
+    IERC7984  public immutable cUSDT;
+    ITreasury public immutable treasury;
+    address   public immutable factory;
 
     Market public market;
 
-    /// CPMM pool reserves, in USDC base units (6 decimals).
+    /// CPMM pool reserves (public, in cUSDT base units / 1e6).
     uint256 public yesReserve;
     uint256 public noReserve;
 
-    /// USDC collateral locked against outstanding shares (net of pool reserves).
-    /// Increments on buy, decrements on sell, drains on resolve/claim.
-    uint256 public totalCollateral;
+    /// Cleartext bookkeeping of cUSDT held by this market — updated at every
+    /// settled action so the LP can sweep residual cleanly post-resolution.
+    uint64 public cUSDTHeld;
 
-    // user => side => shares
-    mapping(address => uint256) public yesShares;
-    mapping(address => uint256) public noShares;
-    mapping(address => bool)    public claimed;
+    /// Encrypted per-user share balances.
+    mapping(address => euint64) private _yesShares;
+    mapping(address => euint64) private _noShares;
+    mapping(address => bool) public claimed;
 
-    /// Minimum bet/sell size (0.01 USDC) so fees never round to zero.
-    uint256 public constant MIN_AMOUNT = 10_000;
+    /// Intent snapshots — hidden ciphertext that gets publicly decrypted.
+    mapping(address => euint64) private _pendingBuyAmount;
+    mapping(address => euint64) private _pendingSellShares;
+    mapping(address => euint64) private _pendingClaimAmount;
 
-    // ── Events ─────────────────────────────────────────────
-    event BetBought(address indexed user, bool isYes, uint256 amountIn, uint256 sharesOut, uint256 fee);
-    event BetSold(address indexed user, bool isYes, uint256 sharesIn, uint256 amountOut, uint256 fee);
+    mapping(address => PendingBuy)   public pendingBuys;
+    mapping(address => PendingSell)  public pendingSells;
+    mapping(address => PendingClaim) public pendingClaims;
+
+    /// Minimum cleartext bet/sell size (0.01 cUSDT) so fees never round to zero.
+    uint64 public constant MIN_AMOUNT = 10_000;
+
+    event BuyIntent(address indexed user, bool isYes);
+    event BetBought(address indexed user, bool isYes, uint64 amountIn, uint256 sharesOut, uint64 fee);
+    event SellIntent(address indexed user, bool isYes);
+    event BetSold(address indexed user, bool isYes, uint64 sharesIn, uint64 amountOut, uint64 fee);
     event MarketResolved(Outcome outcome);
-    event WinningsClaimed(address indexed user, uint256 amount);
+    event ClaimIntent(address indexed user);
+    event WinningsClaimed(address indexed user, uint64 amount);
     event MarketCancelled();
 
-    // ── Errors ─────────────────────────────────────────────
     error MarketClosed();
+    error MarketNotClosed();
     error AlreadyResolved();
     error NotResolved();
     error AlreadyClaimed();
     error ZeroAmount();
     error BetTooSmall();
     error NotFactory();
-    error InsufficientShares();
+    error PendingActive();
+    error NoPending();
     error Slippage();
     error SellExceedsLiquidity();
 
@@ -90,7 +119,7 @@ contract PredictionMarket is ReentrancyGuard {
     }
 
     constructor(
-        address _usdc,
+        address _cUSDT,
         address _treasury,
         address _factory,
         string memory _question,
@@ -98,10 +127,10 @@ contract PredictionMarket is ReentrancyGuard {
         string memory _category,
         string memory _imageUrl,
         uint256 _resolutionTime,
-        uint256 _seedLiquidity
+        uint64  _seedLiquidity
     ) {
         require(_seedLiquidity >= MIN_AMOUNT, "seed too small");
-        usdc     = IERC20(_usdc);
+        cUSDT    = IERC7984(_cUSDT);
         treasury = ITreasury(_treasury);
         factory  = _factory;
 
@@ -116,132 +145,221 @@ contract PredictionMarket is ReentrancyGuard {
             resolved:       false
         });
 
-        // Factory MUST transfer `_seedLiquidity` USDC to this contract before/during construction.
-        yesReserve      = _seedLiquidity;
-        noReserve       = _seedLiquidity;
-        totalCollateral = _seedLiquidity;
+        // Treasury seeds liquidity by `confidentialTransfer`-ing `_seedLiquidity`
+        // cUSDT to this contract immediately after construction.
+        yesReserve = _seedLiquidity;
+        noReserve  = _seedLiquidity;
+        cUSDTHeld  = _seedLiquidity;
     }
 
-    // ── Buy ────────────────────────────────────────────────
+    // ── Buy: intent / execute ─────────────────────────────────
 
-    /// @notice Buy `isYes` shares with `amountIn` USDC. Reverts if slippage exceeds `minSharesOut`.
-    function buy(bool isYes, uint256 amountIn, uint256 minSharesOut)
+    /// @notice Step 1 of buy. User must have called
+    ///         `cUSDT.setOperator(market, until)` before this. Pulls the
+    ///         encrypted amount via cUSDT, snapshots the actually-transferred
+    ///         ciphertext, and marks it publicly decryptable.
+    function buyIntent(
+        bool             isYes,
+        externalEuint64  encAmount,
+        bytes calldata   inputProof,
+        uint256          minSharesOut
+    ) external nonReentrant {
+        if (market.resolved || block.timestamp >= market.resolutionTime) revert MarketClosed();
+        if (pendingBuys[msg.sender].active) revert PendingActive();
+
+        euint64 amount = FHE.fromExternal(encAmount, inputProof);
+        FHE.allowTransient(amount, address(cUSDT));
+        euint64 transferred = cUSDT.confidentialTransferFrom(msg.sender, address(this), amount);
+
+        _pendingBuyAmount[msg.sender] = transferred;
+        FHE.allowThis(transferred);
+        FHE.allow(transferred, msg.sender);
+        FHE.makePubliclyDecryptable(transferred);
+
+        pendingBuys[msg.sender] = PendingBuy({ active: true, isYes: isYes, minSharesOut: minSharesOut });
+        emit BuyIntent(msg.sender, isYes);
+    }
+
+    /// @notice Step 2 of buy. Anyone (typically the user) submits the
+    ///         relayer-decrypted cleartext + KMS proof. Runs CPMM math on the
+    ///         verified amount, mints encrypted shares to `user`, and forwards
+    ///         the platform fee to the treasury.
+    function executeBuy(address user, uint64 cleartextAmount, bytes calldata decryptionProof)
         external
         nonReentrant
-        returns (uint256 sharesOut)
     {
-        if (amountIn < MIN_AMOUNT) revert BetTooSmall();
-        if (market.resolved || block.timestamp >= market.resolutionTime) revert MarketClosed();
+        PendingBuy memory p = pendingBuys[user];
+        if (!p.active) revert NoPending();
 
-        usdc.safeTransferFrom(msg.sender, address(this), amountIn);
+        bytes32[] memory handles = new bytes32[](1);
+        handles[0] = FHE.toBytes32(_pendingBuyAmount[user]);
+        FHE.checkSignatures(handles, abi.encode(cleartextAmount), decryptionProof);
 
-        uint256 feeBps = treasury.feeBps();
-        uint256 fee    = (amountIn * feeBps) / 10_000;
-        uint256 net    = amountIn - fee;
+        delete pendingBuys[user];
 
-        usdc.forceApprove(address(treasury), fee);
-        treasury.depositFee(fee);
+        if (cleartextAmount == 0) {
+            // Underfunded intent: cUSDT pulled 0. No CPMM update, no shares.
+            emit BetBought(user, p.isYes, 0, 0, 0);
+            return;
+        }
 
-        // CPMM swap: split `net` USDC into `net` YES + `net` NO; deposit the opposite side
-        // to the pool; pull the desired side out to keep invariant yesReserve*noReserve = k.
+        // Cleartext CPMM math.
+        uint64 feeBps  = uint64(treasury.feeBps());
+        uint64 fee     = uint64((uint256(cleartextAmount) * feeBps) / 10_000);
+        uint64 net     = cleartextAmount - fee;
+        cUSDTHeld     += cleartextAmount;
+
         uint256 yOld = yesReserve;
         uint256 nOld = noReserve;
         uint256 k    = yOld * nOld;
+        uint256 sharesOut;
 
-        if (isYes) {
-            uint256 nNew = nOld + net;
-            // Round yNew UP so yNew*nNew >= k → pool never loses value; user gets slightly fewer shares.
+        if (p.isYes) {
+            uint256 nNew = nOld + uint256(net);
             uint256 yNew = Math.ceilDiv(k, nNew);
-            sharesOut    = net + (yOld - yNew);
+            sharesOut    = uint256(net) + (yOld - yNew);
             yesReserve   = yNew;
             noReserve    = nNew;
-            yesShares[msg.sender] += sharesOut;
         } else {
-            uint256 yNew = yOld + net;
+            uint256 yNew = yOld + uint256(net);
             uint256 nNew = Math.ceilDiv(k, yNew);
-            sharesOut    = net + (nOld - nNew);
+            sharesOut    = uint256(net) + (nOld - nNew);
             yesReserve   = yNew;
             noReserve    = nNew;
-            noShares[msg.sender] += sharesOut;
+        }
+        if (sharesOut < p.minSharesOut) revert Slippage();
+        require(sharesOut <= type(uint64).max, "shares overflow");
+
+        // Encrypted user share balance update.
+        euint64 prev = p.isYes ? _yesShares[user] : _noShares[user];
+        if (!FHE.isInitialized(prev)) prev = FHE.asEuint64(0);
+        euint64 next = FHE.add(prev, FHE.asEuint64(uint64(sharesOut)));
+        if (p.isYes) {
+            _yesShares[user] = next;
+        } else {
+            _noShares[user] = next;
+        }
+        FHE.allowThis(next);
+        FHE.allow(next, user);
+
+        // Forward fee to treasury.
+        if (fee > 0) {
+            euint64 encFee = FHE.asEuint64(fee);
+            FHE.allowTransient(encFee, address(cUSDT));
+            cUSDT.confidentialTransfer(address(treasury), encFee);
+            cUSDTHeld -= fee;
         }
 
-        totalCollateral += net;
-        if (sharesOut < minSharesOut) revert Slippage();
-
-        emit BetBought(msg.sender, isYes, amountIn, sharesOut, fee);
+        emit BetBought(user, p.isYes, cleartextAmount, sharesOut, fee);
     }
 
-    // ── Sell ───────────────────────────────────────────────
+    // ── Sell: intent / execute ────────────────────────────────
 
-    /// @notice Sell `sharesIn` of the `isYes` side for USDC at the current AMM price.
-    ///         Reverts if slippage pushes `amountOut` below `minAmountOut`.
-    function sell(bool isYes, uint256 sharesIn, uint256 minAmountOut)
+    /// @notice Step 1 of sell. Encrypts user's intended share count, clamps it
+    ///         branchlessly to the user's current encrypted balance, debits
+    ///         shares immediately, and snapshots the clamped amount publicly.
+    function sellIntent(
+        bool             isYes,
+        externalEuint64  encShares,
+        bytes calldata   inputProof,
+        uint256          minAmountOut
+    ) external nonReentrant {
+        if (market.resolved || block.timestamp >= market.resolutionTime) revert MarketClosed();
+        if (pendingSells[msg.sender].active) revert PendingActive();
+
+        euint64 shares = FHE.fromExternal(encShares, inputProof);
+
+        euint64 bal = isYes ? _yesShares[msg.sender] : _noShares[msg.sender];
+        if (!FHE.isInitialized(bal)) bal = FHE.asEuint64(0);
+
+        ebool   ok          = FHE.le(shares, bal);
+        euint64 actualShares = FHE.select(ok, shares, FHE.asEuint64(0));
+
+        euint64 newBal = FHE.sub(bal, actualShares);
+        if (isYes) {
+            _yesShares[msg.sender] = newBal;
+        } else {
+            _noShares[msg.sender] = newBal;
+        }
+        FHE.allowThis(newBal);
+        FHE.allow(newBal, msg.sender);
+
+        _pendingSellShares[msg.sender] = actualShares;
+        FHE.allowThis(actualShares);
+        FHE.allow(actualShares, msg.sender);
+        FHE.makePubliclyDecryptable(actualShares);
+
+        pendingSells[msg.sender] = PendingSell({ active: true, isYes: isYes, minAmountOut: minAmountOut });
+        emit SellIntent(msg.sender, isYes);
+    }
+
+    /// @notice Step 2 of sell. Verifies the cleartext clamped share count via
+    ///         KMS proof, runs CPMM swap on cleartext, pays user (cUSDT) and
+    ///         treasury (fee).
+    function executeSell(address user, uint64 cleartextShares, bytes calldata decryptionProof)
         external
         nonReentrant
-        returns (uint256 amountOut)
     {
-        if (sharesIn == 0) revert ZeroAmount();
-        if (market.resolved || block.timestamp >= market.resolutionTime) revert MarketClosed();
-        if (sharesIn < MIN_AMOUNT) revert BetTooSmall();
+        PendingSell memory p = pendingSells[user];
+        if (!p.active) revert NoPending();
 
-        if (isYes) {
-            if (yesShares[msg.sender] < sharesIn) revert InsufficientShares();
-        } else {
-            if (noShares[msg.sender]  < sharesIn) revert InsufficientShares();
+        bytes32[] memory handles = new bytes32[](1);
+        handles[0] = FHE.toBytes32(_pendingSellShares[user]);
+        FHE.checkSignatures(handles, abi.encode(cleartextShares), decryptionProof);
+
+        delete pendingSells[user];
+
+        if (cleartextShares == 0) {
+            emit BetSold(user, p.isYes, 0, 0, 0);
+            return;
         }
 
-        // Solve for amountOut (pre-fee) from the quadratic:
-        //   A^2 - A·(Y + N + sharesIn) + sharesIn·oppositeReserve = 0
-        //   A = [(Y+N+sharesIn) - sqrt((Y+N+sharesIn)^2 - 4·sharesIn·oppositeReserve)] / 2
-        uint256 grossOut = _computeSellOut(isYes, sharesIn);
-        if (grossOut == 0) revert ZeroAmount();
+        uint256 grossOut = _computeSellOut(p.isYes, uint256(cleartextShares));
+        require(grossOut > 0, "gross zero");
         if (grossOut >= noReserve || grossOut >= yesReserve) revert SellExceedsLiquidity();
 
-        // Apply fee on payout (symmetric with buy-side fee).
-        uint256 feeBps = treasury.feeBps();
-        uint256 fee    = (grossOut * feeBps) / 10_000;
-        amountOut      = grossOut - fee;
+        uint64 feeBps    = uint64(treasury.feeBps());
+        uint64 fee       = uint64((grossOut * feeBps) / 10_000);
+        uint64 amountOut = uint64(grossOut) - fee;
 
-        if (amountOut < minAmountOut) revert Slippage();
+        if (uint256(amountOut) < p.minAmountOut) revert Slippage();
 
-        // Burn user's shares; update pool; pay treasury + user.
-        if (isYes) {
-            yesShares[msg.sender] -= sharesIn;
-            yesReserve            += (sharesIn - grossOut);  // swap-in YES minus burned YES
-            noReserve             -= grossOut;
+        // Update reserves.
+        if (p.isYes) {
+            yesReserve += (uint256(cleartextShares) - grossOut);
+            noReserve  -= grossOut;
         } else {
-            noShares[msg.sender]  -= sharesIn;
-            noReserve             += (sharesIn - grossOut);
-            yesReserve            -= grossOut;
+            noReserve  += (uint256(cleartextShares) - grossOut);
+            yesReserve -= grossOut;
         }
-        totalCollateral -= grossOut;
 
-        usdc.forceApprove(address(treasury), fee);
-        treasury.depositFee(fee);
-        usdc.safeTransfer(msg.sender, amountOut);
+        // Pay treasury fee + user payout.
+        if (fee > 0) {
+            euint64 encFee = FHE.asEuint64(fee);
+            FHE.allowTransient(encFee, address(cUSDT));
+            cUSDT.confidentialTransfer(address(treasury), encFee);
+        }
+        if (amountOut > 0) {
+            euint64 encOut = FHE.asEuint64(amountOut);
+            FHE.allowTransient(encOut, address(cUSDT));
+            cUSDT.confidentialTransfer(user, encOut);
+        }
+        cUSDTHeld -= (amountOut + fee);
 
-        emit BetSold(msg.sender, isYes, sharesIn, amountOut, fee);
-    }
-
-    /// @notice Preview sell output (pre-fee) for UI slippage estimation.
-    function previewSell(bool isYes, uint256 sharesIn) external view returns (uint256 grossOut) {
-        if (sharesIn == 0) return 0;
-        grossOut = _computeSellOut(isYes, sharesIn);
+        emit BetSold(user, p.isYes, cleartextShares, amountOut, fee);
     }
 
     function _computeSellOut(bool isYes, uint256 sharesIn) internal view returns (uint256) {
         uint256 Y = yesReserve;
         uint256 N = noReserve;
         uint256 oppReserve = isYes ? N : Y;
-        uint256 b = Y + N + sharesIn;                 // quadratic middle coeff
+        uint256 b = Y + N + sharesIn;
         uint256 disc = b * b - 4 * sharesIn * oppReserve;
-        // Feasibility: disc must be non-negative (always true when sharesIn < Y+N).
         uint256 root = Math.sqrt(disc);
-        // Choose minus branch: A = (b - sqrt(disc)) / 2
         return (b - root) / 2;
     }
 
-    // ── Resolution ─────────────────────────────────────────
+    // ── Resolution ────────────────────────────────────────────
 
     function resolve(bool yesWon) external onlyFactory {
         if (market.resolved) revert AlreadyResolved();
@@ -257,58 +375,124 @@ contract PredictionMarket is ReentrancyGuard {
         emit MarketCancelled();
     }
 
-    // ── Claiming ───────────────────────────────────────────
+    // ── Claim: intent / execute ───────────────────────────────
 
-    /// @notice After resolution, winners claim 1 USDC per winning share.
-    ///         On cancel, both sides get their shares refunded 1:1.
-    function claimWinnings() external nonReentrant {
+    /// @notice Step 1 of claim. Snapshots the user's winning encrypted balance,
+    ///         zeroes the relevant share mappings, and marks the snapshot
+    ///         publicly decryptable.
+    function claimIntent() external nonReentrant {
         if (!market.resolved) revert NotResolved();
         if (claimed[msg.sender]) revert AlreadyClaimed();
-        claimed[msg.sender] = true;
+        if (pendingClaims[msg.sender].active) revert PendingActive();
 
-        uint256 payout = _calculatePayout(msg.sender);
-        require(payout > 0, "No winnings");
-
-        usdc.safeTransfer(msg.sender, payout);
-        emit WinningsClaimed(msg.sender, payout);
-    }
-
-    /// @notice LP (treasury) can withdraw its share of residual USDC after resolution
-    ///         (= the pool's winning-side reserve).  Only callable by factory.
-    function withdrawResidual(address to) external onlyFactory returns (uint256 amount) {
-        if (!market.resolved) revert NotResolved();
         Outcome o = market.outcome;
+        euint64 winShares;
 
         if (o == Outcome.YES) {
-            amount = yesReserve;
-            yesReserve = 0;
+            winShares = _yesShares[msg.sender];
+            if (!FHE.isInitialized(winShares)) winShares = FHE.asEuint64(0);
+            _yesShares[msg.sender] = FHE.asEuint64(0);
+            FHE.allowThis(_yesShares[msg.sender]);
+            FHE.allow(_yesShares[msg.sender], msg.sender);
         } else if (o == Outcome.NO) {
-            amount = noReserve;
-            noReserve = 0;
+            winShares = _noShares[msg.sender];
+            if (!FHE.isInitialized(winShares)) winShares = FHE.asEuint64(0);
+            _noShares[msg.sender] = FHE.asEuint64(0);
+            FHE.allowThis(_noShares[msg.sender]);
+            FHE.allow(_noShares[msg.sender], msg.sender);
         } else {
-            // CANCELLED: LP gets nothing beyond what users refund-claim; seed already returned via claims.
-            amount = 0;
+            // CANCELLED: refund both sides.
+            euint64 y = _yesShares[msg.sender];
+            if (!FHE.isInitialized(y)) y = FHE.asEuint64(0);
+            euint64 n = _noShares[msg.sender];
+            if (!FHE.isInitialized(n)) n = FHE.asEuint64(0);
+            winShares = FHE.add(y, n);
+            _yesShares[msg.sender] = FHE.asEuint64(0);
+            _noShares[msg.sender]  = FHE.asEuint64(0);
+            FHE.allowThis(_yesShares[msg.sender]);
+            FHE.allow(_yesShares[msg.sender], msg.sender);
+            FHE.allowThis(_noShares[msg.sender]);
+            FHE.allow(_noShares[msg.sender], msg.sender);
         }
-        if (amount > 0) {
-            usdc.safeTransfer(to, amount);
-        }
+
+        _pendingClaimAmount[msg.sender] = winShares;
+        FHE.allowThis(winShares);
+        FHE.allow(winShares, msg.sender);
+        FHE.makePubliclyDecryptable(winShares);
+
+        claimed[msg.sender] = true;
+        pendingClaims[msg.sender] = PendingClaim({ active: true, outcome: o });
+        emit ClaimIntent(msg.sender);
     }
 
-    // ── Views ──────────────────────────────────────────────
+    /// @notice Step 2 of claim. Verifies cleartext via KMS proof and pays cUSDT.
+    function executeClaim(address user, uint64 cleartextAmount, bytes calldata decryptionProof)
+        external
+        nonReentrant
+    {
+        PendingClaim memory p = pendingClaims[user];
+        if (!p.active) revert NoPending();
+
+        bytes32[] memory handles = new bytes32[](1);
+        handles[0] = FHE.toBytes32(_pendingClaimAmount[user]);
+        FHE.checkSignatures(handles, abi.encode(cleartextAmount), decryptionProof);
+
+        delete pendingClaims[user];
+
+        if (cleartextAmount > 0) {
+            euint64 encOut = FHE.asEuint64(cleartextAmount);
+            FHE.allowTransient(encOut, address(cUSDT));
+            cUSDT.confidentialTransfer(user, encOut);
+            cUSDTHeld -= cleartextAmount;
+        }
+
+        emit WinningsClaimed(user, cleartextAmount);
+    }
+
+    /// @notice After resolution, factory sweeps the residual cUSDT (LP profit
+    ///         + losing-side capital) back to the treasury. Pass an exact
+    ///         cleartext amount equal to current `cUSDTHeld`; cUSDT will only
+    ///         transfer if this contract holds at least that much.
+    function withdrawResidual(address to) external onlyFactory returns (uint64 amount) {
+        if (!market.resolved) revert MarketNotClosed();
+        amount = cUSDTHeld;
+        if (amount == 0) return 0;
+        cUSDTHeld = 0;
+        euint64 encOut = FHE.asEuint64(amount);
+        FHE.allowTransient(encOut, address(cUSDT));
+        cUSDT.confidentialTransfer(to, encOut);
+    }
+
+    // ── Views ─────────────────────────────────────────────────
 
     function getMarket() external view returns (Market memory) {
         return market;
     }
 
-    function getUserShares(address user) external view returns (uint256 yes, uint256 no) {
-        return (yesShares[user], noShares[user]);
+    /// @notice Encrypted YES-share balance handle. Frontend user-decrypts via EIP-712.
+    function yesSharesHandle(address user) external view returns (euint64) {
+        return _yesShares[user];
     }
 
-    function previewPayout(address user) external view returns (uint256) {
-        return _calculatePayout(user);
+    /// @notice Encrypted NO-share balance handle. Frontend user-decrypts via EIP-712.
+    function noSharesHandle(address user) external view returns (euint64) {
+        return _noShares[user];
     }
 
-    /// @notice Current YES odds (scaled to 1e18 = 100%) from CPMM spot: N / (Y + N).
+    /// @notice Snapshot handle of a user's pending buy (publicly decryptable).
+    function pendingBuyHandle(address user) external view returns (euint64) {
+        return _pendingBuyAmount[user];
+    }
+
+    function pendingSellHandle(address user) external view returns (euint64) {
+        return _pendingSellShares[user];
+    }
+
+    function pendingClaimHandle(address user) external view returns (euint64) {
+        return _pendingClaimAmount[user];
+    }
+
+    /// @notice Current YES odds (1e18 = 100%) from CPMM spot: N / (Y + N).
     function yesOdds() external view returns (uint256) {
         uint256 total = yesReserve + noReserve;
         if (total == 0) return 0.5e18;
@@ -321,42 +505,30 @@ contract PredictionMarket is ReentrancyGuard {
         return (yesReserve * 1e18) / total;
     }
 
-    /// @notice Quote how many shares `amountIn` USDC buys (net of fee), for UI.
-    function previewBuy(bool isYes, uint256 amountIn) external view returns (uint256 sharesOut) {
+    /// @notice Quote how many shares `amountIn` cUSDT buys (net of fee). Public preview.
+    function previewBuy(bool isYes, uint64 amountIn) external view returns (uint256 sharesOut) {
         if (amountIn < MIN_AMOUNT) return 0;
-        uint256 feeBps = treasury.feeBps();
-        uint256 net    = amountIn - (amountIn * feeBps) / 10_000;
-        uint256 k      = yesReserve * noReserve;
+        uint64 feeBps = uint64(treasury.feeBps());
+        uint64 net    = amountIn - uint64((uint256(amountIn) * feeBps) / 10_000);
+        uint256 k     = yesReserve * noReserve;
         if (isYes) {
-            uint256 nNew = noReserve + net;
+            uint256 nNew = noReserve + uint256(net);
             uint256 yNew = Math.ceilDiv(k, nNew);
-            sharesOut = net + (yesReserve - yNew);
+            sharesOut    = uint256(net) + (yesReserve - yNew);
         } else {
-            uint256 yNew = yesReserve + net;
+            uint256 yNew = yesReserve + uint256(net);
             uint256 nNew = Math.ceilDiv(k, yNew);
-            sharesOut = net + (noReserve - nNew);
+            sharesOut    = uint256(net) + (noReserve - nNew);
         }
     }
 
-    /// @notice Total AMM liquidity (YES + NO reserves).  Used by UI for "pool size".
+    /// @notice Preview gross sell output (pre-fee) for a cleartext sharesIn.
+    function previewSell(bool isYes, uint64 sharesIn) external view returns (uint256 grossOut) {
+        if (sharesIn == 0) return 0;
+        grossOut = _computeSellOut(isYes, uint256(sharesIn));
+    }
+
     function totalPool() external view returns (uint256) {
         return yesReserve + noReserve;
-    }
-
-    // ── Internal ───────────────────────────────────────────
-
-    function _calculatePayout(address user) internal view returns (uint256) {
-        Outcome o = market.outcome;
-
-        if (o == Outcome.CANCELLED) {
-            return yesShares[user] + noShares[user];
-        }
-        if (o == Outcome.YES) {
-            return yesShares[user];                // 1 USDC per YES share
-        }
-        if (o == Outcome.NO) {
-            return noShares[user];
-        }
-        return 0;
     }
 }

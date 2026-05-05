@@ -31,60 +31,68 @@ function TickerLoader({
   return null;
 }
 
-function TickerRow({ items, prices }: { items: TickEntry[]; prices: PriceMap | null }) {
+function PixelSep() {
+  return <span style={{ width: 6, height: 6, background: "var(--y)", display: "inline-block" }} />;
+}
+
+function Item({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="mono inline-flex items-center gap-2 text-[10px] tracking-[0.18em] uppercase whitespace-nowrap"
+      style={{ color: "var(--w)" }}
+    >
+      <PixelSep />
+      {children}
+    </span>
+  );
+}
+
+function Row({ items, prices }: { items: TickEntry[]; prices: PriceMap | null }) {
   const nodes: React.ReactNode[] = [];
 
-  // Market-based ticks (up to 6 by totalPool) — exclude resolved/cancelled
+  // Top markets by pool
   const topMarkets = [...items]
     .filter((e) => !e.market.resolved)
     .sort((a, b) => Number((b.totalPool ?? 0n) - (a.totalPool ?? 0n)))
-    .slice(0, 6);
+    .slice(0, 4);
 
   for (const e of topMarkets) {
     const yPct = e.yesOdds ? Number(e.yesOdds) / 1e16 : 50;
-    // short key from question
-    const key = e.market.question.length > 22
-      ? e.market.question.slice(0, 22).toUpperCase() + "…"
-      : e.market.question.toUpperCase();
-    // Derive a tiny delta from pool vs yes odds for visual movement — cheap proxy.
-    const delta = ((yPct - 50) / 10).toFixed(1);
-    const up = Number(delta) >= 0;
+    const key = e.market.question.length > 24
+      ? e.market.question.slice(0, 24) + "…"
+      : e.market.question;
     nodes.push(
-      <div key={`m-${e.address}`} className="mono flex items-center gap-2 text-[11px] whitespace-nowrap">
-        <span className="tracking-[0.06em] text-[#8b96a5]">{key}</span>
-        <span className="text-[#f3f4f6]">{yPct.toFixed(0)}%</span>
-        <span style={{ color: up ? "#22c55e" : "#ef4444" }}>
-          {up ? "+" : ""}{delta}%
-        </span>
-      </div>,
+      <Item key={`m-${e.address}`}>
+        <span style={{ color: "var(--g1)" }}>{key.toUpperCase()}</span>
+        <span style={{ color: "var(--y)" }}>{yPct.toFixed(0)}%</span>
+      </Item>,
     );
   }
 
-  // Live crypto prices
+  // Live prices
   for (const c of TRACKED_COINS) {
     const p = prices?.[c.id as CoinId]?.usd;
     if (p === undefined) continue;
     nodes.push(
-      <div key={`c-${c.id}`} className="mono flex items-center gap-2 text-[11px] whitespace-nowrap">
-        <span className="tracking-[0.06em] text-[#8b96a5]">{c.symbol}</span>
-        <span className="text-[#f3f4f6]">{formatUsd(p)}</span>
-      </div>,
+      <Item key={`c-${c.id}`}>
+        <span>{c.symbol}</span>
+        <span>{formatUsd(p)}</span>
+      </Item>,
     );
   }
 
-  if (nodes.length === 0) {
-    nodes.push(
-      <div key="empty" className="mono text-[11px] text-[#6b7280] whitespace-nowrap">
-        Awaiting market data…
-      </div>,
-    );
+  // Static brand strings
+  const brand = [
+    "READ FHE MARKET DOCS",
+    "LIVE ON SEPOLIA",
+    "cUSDT · ERC-7984",
+    "POOL PUBLIC · POSITION PRIVATE",
+  ];
+  for (const b of brand) {
+    nodes.push(<Item key={`b-${b}`}>{b}</Item>);
   }
 
-  return (
-    <div className="flex gap-7 shrink-0 pr-7">
-      {nodes}
-    </div>
-  );
+  return <div className="flex gap-12 shrink-0 pr-12">{nodes}</div>;
 }
 
 export default function Ticker() {
@@ -119,15 +127,13 @@ export default function Ticker() {
       {addrList.map((a) => (
         <TickerLoader key={a} address={a} onLoad={handleLoad} />
       ))}
-      <div className="border-b border-[#1f2630] bg-[#0b0e12] h-[30px] flex items-center overflow-hidden px-4 sm:px-6 lg:px-8 sticky top-[56px] z-40">
-        <div className="mono label shrink-0 text-[9px] tracking-[0.16em] text-[#6b7280] mr-4">
-          ◉ LIVE
-        </div>
-        <div className="flex-1 overflow-hidden relative">
-          <div className="ticker-track flex">
-            <TickerRow items={loaded} prices={prices} />
-            <TickerRow items={loaded} prices={prices} />
-          </div>
+      <div
+        className="sticky top-[56px] z-40 h-[32px] flex items-center overflow-hidden"
+        style={{ background: "var(--k)", borderTop: "1px solid #222", borderBottom: "1px solid #222" }}
+      >
+        <div className="ticker-track flex">
+          <Row items={loaded} prices={prices} />
+          <Row items={loaded} prices={prices} />
         </div>
       </div>
     </>

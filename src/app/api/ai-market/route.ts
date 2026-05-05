@@ -60,7 +60,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
-      "X-Title": "Propex",
+      "X-Title": "FHE Market",
     },
     body: JSON.stringify({
       model,

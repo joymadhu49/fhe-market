@@ -1,17 +1,49 @@
-export default function Logo({ compact = false }: { compact?: boolean }) {
+"use client";
+
+/**
+ * 3×3 yellow pixel-grid glyph + monospace wordmark. Inverse mode flips the
+ * negative-space squares to black for white-bg surfaces.
+ */
+export default function Logo({
+  compact = false,
+  inverse = false,
+}: {
+  compact?: boolean;
+  inverse?: boolean;
+}) {
+  // 3×3 mask: 1 = filled, 0 = transparent. Reads roughly as an "F" outline.
+  const mask = [1, 1, 0, 1, 1, 1, 0, 1, 1];
   return (
-    <div className="flex items-center gap-[10px]">
-      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden>
-        <rect x="1" y="1" width="20" height="20" rx="2" fill="none" stroke="#2d9cdb" strokeWidth="1.5" />
-        {/* Stylized "P" for Propex */}
-        <path d="M7 16 L7 6 L13 6 A3 3 0 0 1 13 12 L7 12" fill="none" stroke="#f3f4f6" strokeWidth="1.8" strokeLinejoin="miter" strokeLinecap="square" />
-        <circle cx="16.5" cy="16.5" r="1.7" fill="#22c55e" />
-      </svg>
+    <div className="flex items-center gap-2.5">
+      <div
+        className="grid"
+        style={{ gridTemplateColumns: "repeat(3, 6px)", gridAutoRows: 6, gap: 1 }}
+        aria-hidden
+      >
+        {mask.map((v, i) => (
+          <span
+            key={i}
+            style={{
+              background: v ? "var(--y)" : inverse ? "var(--k)" : "transparent",
+              width: 6,
+              height: 6,
+            }}
+          />
+        ))}
+      </div>
       {!compact && (
-        <>
-          <span className="text-[15px] font-bold tracking-[-0.2px] text-[#f3f4f6]">PROPEX</span>
-          <span className="mono text-[10px] uppercase tracking-[0.1em] text-[#6b7280] ml-[2px] hidden sm:inline">{"// v0.1"}</span>
-        </>
+        <span
+          className="mono"
+          style={{
+            color: inverse ? "var(--k)" : "var(--w)",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          FHE&nbsp;MARKET
+        </span>
       )}
     </div>
   );

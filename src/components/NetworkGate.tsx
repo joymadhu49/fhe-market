@@ -2,7 +2,7 @@
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Wifi } from "lucide-react";
-import { arcTestnet } from "@/lib/chains";
+import { sepolia } from "@/lib/chains";
 
 interface Props {
   children?: React.ReactNode;
@@ -19,7 +19,7 @@ export default function NetworkGate({ children, showWhenConnected = false, compa
   const chainId = useChainId();
   const { switchChain, isPending } = useSwitchChain();
 
-  const wrongChain = isConnected && chainId !== arcTestnet.id;
+  const wrongChain = isConnected && chainId !== sepolia.id;
 
   if (!isConnected) {
     return (
@@ -52,10 +52,10 @@ export default function NetworkGate({ children, showWhenConnected = false, compa
       >
         <span className="flex items-center gap-2">
           <Wifi className="h-3.5 w-3.5" />
-          Wrong network — switch to {arcTestnet.name}.
+          Wrong network — switch to {sepolia.name}.
         </span>
         <button
-          onClick={() => switchChain({ chainId: arcTestnet.id })}
+          onClick={() => switchChain({ chainId: sepolia.id })}
           disabled={isPending}
           className="rounded-[3px] border border-[#ef4444]/50 bg-[#ef4444]/15 px-[10px] py-[4px] text-[11.5px] font-semibold text-[#fca5a5] hover:bg-[#ef4444]/25 disabled:opacity-50 transition-colors"
         >
@@ -72,6 +72,6 @@ export default function NetworkGate({ children, showWhenConnected = false, compa
 export function useChainGate() {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
-  const wrongChain = isConnected && chainId !== arcTestnet.id;
+  const wrongChain = isConnected && chainId !== sepolia.id;
   return { isConnected, wrongChain, address, chainId };
 }

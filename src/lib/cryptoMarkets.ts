@@ -4,7 +4,7 @@
  * A market's on-chain `description` field holds human-readable copy plus a
  * machine-readable tag appended on the last line:
  *
- *   ARCBET:{"type":"crypto_1d","coin":"bitcoin","startUsd":60000,"targetUsd":61200,"createdAt":1730000000}
+ *   FHE MARKET:{"type":"crypto_1d","coin":"bitcoin","startUsd":60000,"targetUsd":61200,"createdAt":1730000000}
  *
  * The admin resolve-bot parses this tag, fetches the live CoinGecko price at
  * resolutionTime (24h after creation), and resolves YES (above target) or
@@ -13,7 +13,7 @@
 
 import { COIN_BY_ID, CoinId, CoinMeta, formatUsd, TRACKED_COINS } from "./coingecko";
 
-export const CRYPTO_MARKET_TAG = "ARCBET:";
+export const CRYPTO_MARKET_TAG = "FHE MARKET:";
 
 /** One day in seconds. */
 export const ONE_DAY_SECONDS = 86_400;
@@ -36,11 +36,11 @@ export function buildCryptoDescription(meta: CryptoMarketMeta): string {
     `Resolves YES if ${coin.name} (${coin.symbol}) trades above ` +
     `${formatUsd(meta.targetUsd)} on CoinGecko at market resolution time ` +
     `(24 hours after creation). Spot price at creation: ${formatUsd(meta.startUsd)}. ` +
-    `Auto-resolved by the Propex admin at end of day using the CoinGecko spot price.`;
+    `Auto-resolved by the FHE Market admin at end of day using the CoinGecko spot price.`;
   return `${human}\n\n${CRYPTO_MARKET_TAG}${JSON.stringify(meta)}`;
 }
 
-/** Return the encoded meta if the description has a valid ARCBET tag, else null. */
+/** Return the encoded meta if the description has a valid FHE MARKET tag, else null. */
 export function parseCryptoDescription(description: string): CryptoMarketMeta | null {
   if (!description) return null;
   const idx = description.lastIndexOf(CRYPTO_MARKET_TAG);

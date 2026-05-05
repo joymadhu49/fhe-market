@@ -13,7 +13,7 @@ function FooterLink({
   external?: boolean;
 }) {
   const className =
-    "text-[12.5px] text-[#8b96a5] hover:text-[#f3f4f6] transition-colors";
+    "mono text-[12px] tracking-[0.06em] text-white hover:text-[var(--y)] transition-colors";
   if (external) {
     return (
       <a href={href} target="_blank" rel="noreferrer" className={className}>
@@ -24,20 +24,6 @@ function FooterLink({
   return (
     <Link href={href} className={className}>
       {children}
-    </Link>
-  );
-}
-
-function CategoryLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="group block"
-    >
-      <div className="text-[13px] font-medium text-[#f3f4f6] group-hover:text-[#2d9cdb] transition-colors">
-        {label}
-      </div>
-      <div className="text-[11px] text-[#6b7280] mt-[2px]">Predictions &amp; odds</div>
     </Link>
   );
 }
@@ -60,109 +46,114 @@ function MailIcon() {
 }
 
 export default function Footer() {
+  const cols: [string, [string, string, boolean?][]][] = [
+    [
+      "PRODUCT",
+      [
+        ["Markets", "/", false],
+        ["Portfolio", "/portfolio", false],
+        ["Leaderboard", "/leaderboard", false],
+        ["Faucet", "/docs#faucet", false],
+      ],
+    ],
+    [
+      "DEVELOPERS",
+      [
+        ["Docs", "/docs", false],
+        ["Contracts", "/docs#contracts", false],
+        ["Sepolia status", "https://sepolia.etherscan.io", true],
+        ["GitHub", "https://github.com/joymadhu49/fhe-market", true],
+      ],
+    ],
+    [
+      "COMMUNITY",
+      [
+        ["X / Twitter", TWITTER_URL, true],
+        ["Zama FHEVM", "https://docs.zama.org/protocol", true],
+        ["Manifesto", "/docs#privacy-model", false],
+      ],
+    ],
+  ];
+
   return (
-    <footer className="border-t border-[#1f2630] mt-16 bg-[#0b0e12]">
-      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-10 pb-6">
-        {/* Brand */}
-        <div className="mb-10">
-          <Logo />
-          <p className="mt-3 text-[13px] text-[#8b96a5] max-w-md">
-            Daily prediction markets, settled in USDC on Arc.
-          </p>
+    <footer style={{ background: "var(--k)", color: "var(--w)" }}>
+      <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 pt-14 pb-7">
+        <div className="grid gap-12 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+          <div>
+            <Logo />
+            <p
+              className="mt-4 text-[13px] leading-[1.6] max-w-[320px]"
+              style={{ color: "var(--g1)" }}
+            >
+              Confidential by construction. A prediction market that doesn&apos;t leak your trade.
+            </p>
+          </div>
+
+          {cols.map(([h, ls]) => (
+            <div key={h}>
+              <div className="eyebrow mb-4" style={{ color: "var(--y)" }}>
+                {h}
+              </div>
+              <div className="grid gap-2">
+                {ls.map(([label, href, ext]) => (
+                  <FooterLink key={label} href={href} external={ext}>
+                    {label}
+                  </FooterLink>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Columns */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
-          <div>
-            <div className="label mb-4">Markets</div>
-            <div className="flex flex-col gap-[14px]">
-              <CategoryLink href="/?category=Crypto" label="Crypto" />
-              <CategoryLink href="/?category=Sports" label="Sports" />
-              <CategoryLink href="/?category=Politics" label="Politics" />
-              <CategoryLink href="/?category=Tech" label="Tech" />
-            </div>
-          </div>
-
-          <div>
-            <div className="label mb-4">Propex</div>
-            <div className="flex flex-col gap-[10px]">
-              <FooterLink href="/">Markets</FooterLink>
-              <FooterLink href="/portfolio">Portfolio</FooterLink>
-              <FooterLink href="/leaderboard">Leaderboard</FooterLink>
-              <FooterLink href="/docs">Docs</FooterLink>
-            </div>
-          </div>
-
-          <div>
-            <div className="label mb-4">Resources</div>
-            <div className="flex flex-col gap-[10px]">
-              <FooterLink href="/docs#how-it-works">How it works</FooterLink>
-              <FooterLink href="/docs#fees">Fees</FooterLink>
-              <FooterLink href="/docs#contracts">Contracts</FooterLink>
-              <FooterLink href="https://docs.arc.network" external>
-                Arc Network
-              </FooterLink>
-            </div>
-          </div>
-
-          <div>
-            <div className="label mb-4">Support &amp; Social</div>
-            <div className="flex flex-col gap-[10px]">
-              <FooterLink href={TWITTER_URL} external>
-                <span className="inline-flex items-center gap-[6px]">
-                  <XIcon /> (Twitter)
-                </span>
-              </FooterLink>
-              <FooterLink href="mailto:support@propex.xyz" external>
-                <span className="inline-flex items-center gap-[6px]">
-                  <MailIcon /> Contact
-                </span>
-              </FooterLink>
-              <FooterLink href="/docs#support">Help Center</FooterLink>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div className="mt-10 pt-5 border-t border-[#1f2630] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div
+          className="mt-12 pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+          style={{ borderTop: "1px solid #222" }}
+        >
           <div className="flex items-center gap-4">
             <a
               href={TWITTER_URL}
               target="_blank"
               rel="noreferrer"
               aria-label="X (Twitter)"
-              className="text-[#6b7280] hover:text-[#f3f4f6] transition-colors"
+              className="transition-colors"
+              style={{ color: "var(--g1)" }}
             >
               <XIcon />
             </a>
             <a
-              href="mailto:support@propex.xyz"
+              href="mailto:support@fhe-market.xyz"
               aria-label="Email"
-              className="text-[#6b7280] hover:text-[#f3f4f6] transition-colors"
+              className="transition-colors"
+              style={{ color: "var(--g1)" }}
             >
               <MailIcon />
             </a>
-            <span className="mono text-[10.5px] text-[#3a4250] ml-2">v0.1 · testnet</span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11.5px] text-[#6b7280]">
-            <span>Propex © {new Date().getFullYear()}</span>
-            <Link href="/docs#terms" className="hover:text-[#f3f4f6] transition-colors">
-              Terms
+          <div
+            className="mono flex flex-wrap items-center gap-x-5 gap-y-2 text-[10px] tracking-[0.12em]"
+            style={{ color: "var(--g1)" }}
+          >
+            <span>© {new Date().getFullYear()} FHE MARKET · BUILT ON ZAMA fhEVM</span>
+            <Link href="/docs#terms" className="hover:text-[var(--y)] transition-colors">
+              TERMS
             </Link>
-            <Link href="/docs#privacy" className="hover:text-[#f3f4f6] transition-colors">
-              Privacy
+            <Link href="/docs#privacy" className="hover:text-[var(--y)] transition-colors">
+              PRIVACY
             </Link>
-            <Link href="/docs" className="hover:text-[#f3f4f6] transition-colors">
-              Docs
+            <Link href="/docs" className="hover:text-[var(--y)] transition-colors">
+              DOCS
             </Link>
           </div>
         </div>
 
-        <p className="mt-6 text-[11px] leading-[1.55] text-[#6b7280] max-w-4xl">
-          Propex is a non-custodial prediction market platform running on Arc Testnet.
-          All trades settle on-chain in USDC. Trading involves risk of loss; use only funds you can afford to lose.
-          Markets are created and resolved according to the rules described in each market&apos;s description.
+        <p
+          className="mono mt-6 text-[10px] tracking-[0.06em] leading-[1.6] max-w-4xl"
+          style={{ color: "var(--g2)" }}
+        >
+          FHE MARKET IS A NON-CUSTODIAL PREDICTION MARKET PROTOCOL RUNNING ON SEPOLIA.
+          ALL TRADES SETTLE ON-CHAIN IN cUSDT. TRADING INVOLVES RISK OF LOSS; USE ONLY
+          FUNDS YOU CAN AFFORD TO LOSE. MARKETS RESOLVE ACCORDING TO THE RULES IN EACH
+          MARKET&apos;S DESCRIPTION.
         </p>
       </div>
     </footer>

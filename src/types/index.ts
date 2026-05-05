@@ -7,7 +7,7 @@ export interface MarketData {
   category: string;
   imageUrl: string;
   resolutionTime: number;
-  /** LP seed USDC locked into the FPMM at market creation. */
+  /** LP seed cUSDT locked into the FPMM at market creation. */
   seedLiquidity: bigint;
   /** Live CPMM reserves. */
   yesReserve: bigint;

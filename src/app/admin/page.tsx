@@ -26,16 +26,17 @@ import AdminGate from "@/components/AdminGate";
 import { AiMarketCreator } from "@/components/AiMarketCreator";
 import NetworkGate, { useChainGate } from "@/components/NetworkGate";
 import TxBanner from "@/components/TxBanner";
+import TreasuryPanel from "@/components/TreasuryPanel";
 import { usePrices } from "@/components/PriceProvider";
 import { useAllMarketAddresses, useMarketData } from "@/hooks/useMarkets";
 import { ERC20_ABI, MARKET_FACTORY_ABI } from "@/lib/abi";
-import { arcTestnet } from "@/lib/chains";
+import { sepolia } from "@/lib/chains";
 import { TRACKED_COINS, formatUsd, type PriceMap } from "@/lib/coingecko";
 import {
   FACTORY_ADDRESS,
   PLATFORM_FEE_BPS,
   TREASURY_ADDRESS,
-  USDC_ADDRESS,
+  CUSDT_ADDRESS,
 } from "@/lib/constants";
 import {
   buildCryptoQuestion,
@@ -144,15 +145,15 @@ function Metric({
   sub: string;
 }) {
   return (
-    <div className="rounded-[4px] border border-[#1f2630] bg-[#131820] p-5">
+    <div className="rounded-[4px] border border-[var(--k)] bg-[var(--w)] p-5">
       <div className="mb-4 flex items-center justify-between">
         <Icon className="h-4 w-4" style={{ color: accent }} />
       </div>
       <div className="label mb-2">{label}</div>
-      <div className="mono text-[24px] font-semibold tracking-[-0.5px] text-[#f3f4f6] leading-[1.1]">
+      <div className="mono text-[24px] font-semibold tracking-[-0.5px] text-[var(--k)] leading-[1.1]">
         {value}
       </div>
-      <div className="mono text-[11px] text-[#8b96a5] mt-[6px]">{sub}</div>
+      <div className="mono text-[11px] text-[var(--g2)] mt-[6px]">{sub}</div>
     </div>
   );
 }
@@ -174,26 +175,26 @@ function LedgerRow({ entry, nowSec }: { entry: LoadedMarketEntry; nowSec: number
 
   return (
     <div
-      className="grid items-center gap-[10px] px-6 py-[14px] border-t border-[#1f2630]"
+      className="grid items-center gap-[10px] px-6 py-[14px] border-t border-[var(--k)]"
       style={{ gridTemplateColumns: "1fr 100px 90px 100px 100px" }}
     >
       <Link
         href={`/market/${entry.address}`}
-        className="text-[13px] text-[#f3f4f6] leading-[1.4] pr-[10px] line-clamp-2 hover:text-[#2d9cdb] transition-colors"
+        className="text-[13px] text-[var(--k)] leading-[1.4] pr-[10px] line-clamp-2 hover:underline transition-colors"
         style={{ textWrap: "balance" }}
       >
         {entry.market.question}
       </Link>
       <div className="flex items-center gap-[7px]">
         <div className="w-[6px] h-[6px] rounded-full" style={{ background: catColor(entry.market.category) }} />
-        <span className="text-[12px] text-[#f3f4f6]">{entry.market.category}</span>
+        <span className="text-[12px] text-[var(--k)]">{entry.market.category}</span>
       </div>
       <div className="flex items-center gap-[6px]">
         <div className="w-[6px] h-[6px] rounded-full" style={{ background: statusColor }} />
-        <span className="text-[12px] text-[#f3f4f6]">{status}</span>
+        <span className="text-[12px] text-[var(--k)]">{status}</span>
       </div>
-      <div className="mono text-[12px] text-[#f3f4f6] text-right">{fmtUSDCCompact(entry.totalPool)}</div>
-      <div className="mono text-[12px] text-[#8b96a5] text-right">{fmtUSDCCompact(fee)}</div>
+      <div className="mono text-[12px] text-[var(--k)] text-right">{fmtUSDCCompact(entry.totalPool)}</div>
+      <div className="mono text-[12px] text-[var(--g2)] text-right">{fmtUSDCCompact(fee)}</div>
     </div>
   );
 }
@@ -244,11 +245,11 @@ function QueueCard({
   }
 
   return (
-    <div className="rounded-[4px] border border-[#1f2630] bg-[#0b0e12] p-4">
+    <div className="rounded-[4px] border border-[var(--k)] bg-[var(--g0)] p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <Link
           href={`/market/${address}`}
-          className="text-[13px] font-medium text-[#f3f4f6] leading-[1.4] flex-1 line-clamp-2 hover:text-[#2d9cdb] transition-colors"
+          className="text-[13px] font-medium text-[var(--k)] leading-[1.4] flex-1 line-clamp-2 hover:underline transition-colors"
           style={{ textWrap: "balance" }}
         >
           {market.question}
@@ -259,7 +260,7 @@ function QueueCard({
           </span>
         )}
         {market.resolved && (
-          <span className="mono text-[9px] font-bold text-[#8b96a5] shrink-0" style={{ letterSpacing: "0.16em" }}>
+          <span className="mono text-[9px] font-bold text-[var(--g2)] shrink-0" style={{ letterSpacing: "0.16em" }}>
             ● {market.outcome}
           </span>
         )}
@@ -268,23 +269,23 @@ function QueueCard({
       <div className="flex items-center gap-4 mb-3 flex-wrap">
         <div className="flex items-center gap-[7px]">
           <div className="w-[6px] h-[6px] rounded-full" style={{ background: catColor(market.category) }} />
-          <span className="text-[12px] text-[#f3f4f6]">{market.category}</span>
+          <span className="text-[12px] text-[var(--k)]">{market.category}</span>
         </div>
-        <div className="mono text-[11px] text-[#8b96a5] flex items-center gap-[5px]">
+        <div className="mono text-[11px] text-[var(--g2)] flex items-center gap-[5px]">
           <Clock3 className="h-[11px] w-[11px]" />
           {timeLeftShort(market.resolutionTime)}
         </div>
-        <div className="mono text-[11px] text-[#8b96a5] ml-auto">{fmtUSDCCompact(pool)} pool</div>
+        <div className="mono text-[11px] text-[var(--g2)] ml-auto">{fmtUSDCCompact(pool)} pool</div>
       </div>
 
       {meta && !market.resolved && (
-        <div className="flex items-center justify-between gap-3 py-[10px] px-3 mb-3 border-t border-b border-[#1f2630]">
+        <div className="flex items-center justify-between gap-3 py-[10px] px-3 mb-3 border-t border-b border-[var(--k)]">
           <div className="flex items-baseline gap-2">
             <span className="mono label">Live</span>
-            <span className="mono text-[13px] font-semibold text-[#f3f4f6]">
+            <span className="mono text-[13px] font-semibold text-[var(--k)]">
               {livePrice ? formatUsd(livePrice) : "—"}
             </span>
-            <ArrowRight className="h-[10px] w-[10px] text-[#6b7280]" />
+            <ArrowRight className="h-[10px] w-[10px] text-[var(--g2)]" />
             <span
               className="mono text-[13px] font-semibold"
               style={{ color: predictedYes === undefined ? "#6b7280" : predictedYes ? "#22c55e" : "#ef4444" }}
@@ -304,10 +305,11 @@ function QueueCard({
               )
             }
             disabled={!!pending || predictedYes === undefined || disabled}
-            className="flex items-center gap-1 text-[11px] font-semibold text-[#a855f7] hover:opacity-80 disabled:opacity-40"
+            className="mono flex items-center gap-1 px-2 py-[4px] text-[10px] font-bold tracking-[0.12em] disabled:opacity-40"
+            style={{ background: "var(--y)", color: "var(--k)", border: "2px solid var(--k)" }}
           >
             {pending === "auto" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-            Auto-resolve
+            AUTO-RESOLVE
           </button>
         </div>
       )}
@@ -362,7 +364,7 @@ function QueueCard({
               )
             }
             disabled={!!pending || disabled}
-            className="flex items-center justify-center gap-1 rounded-[3px] border border-[#1f2630] bg-transparent py-[8px] text-[11px] font-semibold text-[#8b96a5] transition-colors hover:text-[#f3f4f6] hover:border-[#2a3340] disabled:opacity-40"
+            className="flex items-center justify-center gap-1 rounded-[3px] border border-[var(--k)] bg-transparent py-[8px] text-[11px] font-semibold text-[var(--g2)] transition-colors hover:text-[var(--k)] hover:border-[var(--k)] disabled:opacity-40"
             style={{ letterSpacing: "0.08em" }}
           >
             {pending === "cancel" ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
@@ -415,7 +417,7 @@ function DailyCreator({
       return;
     }
     if (seedPerMarket !== undefined && treasuryBalance !== undefined && treasuryBalance < seedPerMarket) {
-      const msg = `Treasury has ${(Number(treasuryBalance) / 1e6).toFixed(2)} USDC but this market needs ${(Number(seedPerMarket) / 1e6).toFixed(2)} USDC seed. Top up the treasury first.`;
+      const msg = `Treasury has ${(Number(treasuryBalance) / 1e6).toFixed(2)} cUSDT but this market needs ${(Number(seedPerMarket) / 1e6).toFixed(2)} cUSDT seed. Top up the treasury first.`;
       onError(msg);
       toast.error(msg);
       return;
@@ -463,7 +465,7 @@ function DailyCreator({
         const needNum = Number(need) / 1e6;
         const canDo = Number(treasuryBalance / seedPerMarket);
         const msg =
-          `Treasury has ${haveNum.toFixed(2)} USDC but ${launchable.length} markets need ${needNum.toFixed(2)} USDC. ` +
+          `Treasury has ${haveNum.toFixed(2)} cUSDT but ${launchable.length} markets need ${needNum.toFixed(2)} cUSDT. ` +
           `Can only launch ${canDo} — top up the treasury or reduce the seed via factory.setDefaultSeedLiquidity.`;
         onError(msg);
         toast.error(msg);
@@ -515,19 +517,19 @@ function DailyCreator({
   }
 
   return (
-    <div className="rounded-[4px] border border-[#1f2630] bg-[#131820] p-5">
+    <div className="rounded-[4px] border border-[var(--k)] bg-[var(--w)] p-5">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[#f3f4f6]">
+          <h3 className="flex items-center gap-2 text-[14px] font-semibold text-[var(--k)]">
             <Flame className="h-4 w-4 text-[#f59e0b]" /> Daily crypto markets
           </h3>
-          <div className="mono text-[11px] text-[#6b7280] mt-[3px]">
+          <div className="mono text-[11px] text-[var(--g2)] mt-[3px]">
             {TRACKED_COINS.length} above-target prompts · 24h resolve
             {affordable !== undefined && seedPerMarket !== undefined && (
               <>
                 {" · "}
                 <span style={{ color: affordable >= TRACKED_COINS.length ? "#22c55e" : affordable === 0 ? "#ef4444" : "#f59e0b" }}>
-                  treasury can seed {affordable}/{TRACKED_COINS.length} @ {(Number(seedPerMarket) / 1e6).toFixed(0)} USDC
+                  treasury can seed {affordable}/{TRACKED_COINS.length} @ {(Number(seedPerMarket) / 1e6).toFixed(0)} cUSDT
                 </span>
               </>
             )}
@@ -536,10 +538,11 @@ function DailyCreator({
         <button
           onClick={createAll}
           disabled={!!busy || !prices || disabled}
-          className="flex items-center gap-1.5 rounded-[3px] bg-gradient-to-r from-[#3b82f6] to-[#a855f7] px-3 py-[7px] text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="mono flex items-center gap-1.5 rounded-none px-3 py-[8px] text-[11px] font-bold tracking-[0.12em] disabled:opacity-50"
+          style={{ background: "var(--y)", color: "var(--k)", border: "2px solid var(--k)" }}
         >
           {busy === "all" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-          Launch all {TRACKED_COINS.length}
+          LAUNCH ALL {TRACKED_COINS.length}
         </button>
       </div>
 
@@ -555,18 +558,18 @@ function DailyCreator({
               key={coin.id}
               onClick={() => createOne(coin.id)}
               disabled={!!busy || !price || disabled}
-              className="rounded-[4px] border border-[#1f2630] bg-[#0b0e12] px-3 py-[14px] text-left transition-colors hover:border-[#2a3340] disabled:opacity-40"
+              className="rounded-[4px] border border-[var(--k)] bg-[var(--g0)] px-3 py-[14px] text-left transition-colors hover:border-[var(--k)] disabled:opacity-40"
             >
-              <div className="text-[12px] font-semibold text-[#f3f4f6] mb-[10px]">{coin.symbol}</div>
-              <div className="mono text-[13px] font-medium text-[#f3f4f6]">
+              <div className="text-[12px] font-semibold text-[var(--k)] mb-[10px]">{coin.symbol}</div>
+              <div className="mono text-[13px] font-medium text-[var(--k)]">
                 {price ? formatUsd(price) : "—"}
               </div>
               <div className="flex items-center gap-[5px] mt-[4px]">
-                <ArrowRight className="h-[10px] w-[10px] text-[#6b7280]" />
-                <span className="mono text-[11px]" style={{ color: coin.color ?? "#a855f7" }}>
+                <ArrowRight className="h-[10px] w-[10px] text-[var(--g2)]" />
+                <span className="mono text-[11px] font-bold" style={{ color: coin.color ?? "var(--k)" }}>
                   {target ? formatUsd(target) : "—"}
                 </span>
-                {busy === coin.id && <Loader2 className="h-3 w-3 animate-spin text-[#3b82f6] ml-auto" />}
+                {busy === coin.id && <Loader2 className="h-3 w-3 animate-spin ml-auto" style={{ color: "var(--k)" }} />}
               </div>
             </button>
           );
@@ -633,11 +636,11 @@ function CustomCreator({
   }
 
   const inputCls =
-    "w-full rounded-[4px] border border-[#1f2630] bg-[#0b0e12] px-3 py-[10px] text-[13px] text-[#f3f4f6] placeholder-[#363d4b] focus:border-[#2d9cdb] focus:outline-none";
+    "w-full rounded-none border-2 border-[var(--k)] bg-[var(--g0)] px-3 py-[10px] text-[13px] text-[var(--k)] placeholder-[var(--g2)] focus:bg-[var(--w)] focus:outline-none";
 
   return (
-    <form onSubmit={submit} className="rounded-[4px] border border-[#1f2630] bg-[#131820] p-5">
-      <h3 className="text-[14px] font-semibold text-[#f3f4f6] mb-4">Custom market</h3>
+    <form onSubmit={submit} className="rounded-[4px] border border-[var(--k)] bg-[var(--w)] p-5">
+      <h3 className="text-[14px] font-semibold text-[var(--k)] mb-4">Custom market</h3>
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <label className="mono label block mb-[6px]">Question</label>
@@ -698,15 +701,16 @@ function CustomCreator({
         <button
           type="submit"
           disabled={creating || disabled}
-          className="flex items-center gap-1.5 rounded-[3px] bg-gradient-to-r from-[#3b82f6] to-[#a855f7] px-4 py-[9px] text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="mono flex items-center gap-1.5 rounded-none px-4 py-[10px] text-[11px] font-bold tracking-[0.12em] disabled:opacity-50"
+          style={{ background: "var(--y)", color: "var(--k)", border: "2px solid var(--k)" }}
         >
           {creating ? (
             <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> CREATING…
             </>
           ) : (
             <>
-              <Plus className="h-3.5 w-3.5" /> Create market
+              <Plus className="h-3.5 w-3.5" /> CREATE MARKET
             </>
           )}
         </button>
@@ -715,146 +719,6 @@ function CustomCreator({
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// Treasury top-up: send USDC from connected admin wallet to the treasury.
-// ──────────────────────────────────────────────────────────────────────────
-function TreasuryTopUp({
-  treasuryAddress,
-  treasuryBalance,
-  disabled,
-  onSent,
-  onError,
-}: {
-  treasuryAddress: `0x${string}`;
-  treasuryBalance: bigint | undefined;
-  disabled: boolean;
-  onSent: () => void;
-  onError: (msg: string | null) => void;
-}) {
-  const { address } = useAccount();
-  const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
-  const [amount, setAmount] = useState("");
-  const [sending, setSending] = useState(false);
-
-  const { data: walletBalance, refetch: refetchWallet } = useReadContract({
-    address: USDC_ADDRESS,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: [address ?? "0x0000000000000000000000000000000000000000"],
-    query: {
-      enabled:
-        !!address &&
-        USDC_ADDRESS !== "0x0000000000000000000000000000000000000000",
-    },
-  });
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    onError(null);
-    if (!address) {
-      onError("Connect your admin wallet first.");
-      return;
-    }
-    const num = Number(amount);
-    if (!Number.isFinite(num) || num <= 0) {
-      onError("Enter a positive USDC amount.");
-      return;
-    }
-    const units = BigInt(Math.floor(num * 1e6));
-    if (units === 0n) {
-      onError("Amount too small (min 0.000001 USDC).");
-      return;
-    }
-    if (walletBalance !== undefined && (walletBalance as bigint) < units) {
-      const have = Number(walletBalance as bigint) / 1e6;
-      onError(`Wallet has ${have.toFixed(2)} USDC, need ${num} USDC.`);
-      return;
-    }
-    setSending(true);
-    try {
-      toast.loading(`Sending ${num} USDC to treasury…`, { id: "topup" });
-      const hash = await writeContractAsync({
-        address: USDC_ADDRESS,
-        abi: ERC20_ABI,
-        functionName: "transfer",
-        args: [treasuryAddress, units],
-      });
-      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
-      toast.success(`Treasury topped up with ${num} USDC`, { id: "topup" });
-      setAmount("");
-      onSent();
-      refetchWallet();
-    } catch (e) {
-      const msg = txErrorMessage(e);
-      onError(msg);
-      toast.error(msg, { id: "topup" });
-    } finally {
-      setSending(false);
-    }
-  }
-
-  const walletStr =
-    walletBalance !== undefined ? `${(Number(walletBalance as bigint) / 1e6).toFixed(2)}` : "—";
-  const treasuryStr =
-    treasuryBalance !== undefined ? `${(Number(treasuryBalance) / 1e6).toFixed(2)}` : "—";
-  const setMax = () => {
-    if (walletBalance === undefined) return;
-    setAmount((Number(walletBalance as bigint) / 1e6).toString());
-  };
-
-  return (
-    <form onSubmit={submit} className="pt-[16px] border-t border-[#1f2630]">
-      <div className="flex items-baseline justify-between mb-[10px]">
-        <div className="mono label">Top up treasury</div>
-        <div className="mono text-[10px] text-[#6b7280]">
-          wallet {walletStr} · treasury {treasuryStr}
-        </div>
-      </div>
-      <div className="flex gap-[6px]">
-        <div className="relative flex-1">
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={amount}
-            onChange={(ev) => setAmount(ev.target.value)}
-            disabled={disabled || sending}
-            className="w-full rounded-[4px] border border-[#1f2630] bg-[#0b0e12] pl-3 pr-[52px] py-[9px] text-[13px] text-[#f3f4f6] placeholder-[#363d4b] focus:border-[#2d9cdb] focus:outline-none disabled:opacity-50"
-          />
-          <button
-            type="button"
-            onClick={setMax}
-            disabled={disabled || sending || walletBalance === undefined}
-            className="absolute right-2 top-1/2 -translate-y-1/2 mono text-[10px] text-[#8b96a5] hover:text-[#f3f4f6] disabled:opacity-40"
-          >
-            MAX
-          </button>
-        </div>
-        <button
-          type="submit"
-          disabled={disabled || sending || !amount}
-          className="flex items-center gap-1.5 rounded-[3px] bg-[#1f2630] hover:bg-[#2a3340] px-4 py-[9px] text-[12px] font-semibold text-[#f3f4f6] transition-colors disabled:opacity-50"
-        >
-          {sending ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…
-            </>
-          ) : (
-            <>
-              <ArrowRight className="h-3.5 w-3.5" /> Deposit
-            </>
-          )}
-        </button>
-      </div>
-      <div className="mono text-[10px] text-[#6b7280] mt-[8px]">
-        Sends USDC from {shortenAddress(address ?? "0x0")} → {shortenAddress(treasuryAddress)} on Arc testnet.
-      </div>
-    </form>
-  );
-}
 
 // ──────────────────────────────────────────────────────────────────────────
 // Page
@@ -889,18 +753,11 @@ function AdminDashboard() {
 
   const treasuryAddress = ((onChainTreasury as `0x${string}` | undefined) ?? TREASURY_ADDRESS) as `0x${string}`;
 
-  const { data: treasuryBalance, refetch: refetchTreasuryBalance } = useReadContract({
-    address: USDC_ADDRESS,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: [treasuryAddress],
-    query: {
-      enabled:
-        !!treasuryAddress &&
-        treasuryAddress !== "0x0000000000000000000000000000000000000000" &&
-        USDC_ADDRESS !== "0x0000000000000000000000000000000000000000",
-    },
-  });
+  // Treasury cUSDT balance is encrypted (ERC-7984). The admin can user-decrypt
+  // their own treasury holding off-chain via the cUSDT contract; the in-page
+  // balance display is intentionally left blank.
+  const treasuryBalance: bigint | undefined = undefined;
+  const refetchTreasuryBalance = async () => {};
 
   const { data: defaultSeedLiquidity } = useReadContract({
     address: FACTORY_ADDRESS,
@@ -1006,7 +863,7 @@ function AdminDashboard() {
     navigator.clipboard.writeText(addr);
     toast.success(`${label} copied`);
   };
-  const explorerUrl = (addr: string) => `${arcTestnet.blockExplorers.default.url}/address/${addr}`;
+  const explorerUrl = (addr: string) => `${sepolia.blockExplorers.default.url}/address/${addr}`;
 
   const tabs: Array<typeof activeTab> = ["overview", "treasury", "settlement", "create"];
   const onTabClick = (t: typeof activeTab) => {
@@ -1026,25 +883,25 @@ function AdminDashboard() {
         <div className="flex items-start justify-between gap-6 flex-wrap mb-5">
           <div>
             <div className="flex items-center gap-[10px] mb-3">
-              <Shield className="h-[18px] w-[18px] text-[#8b96a5]" />
+              <Shield className="h-[18px] w-[18px] text-[var(--g2)]" />
               <span className="mono label">Admin · Operator only</span>
             </div>
-            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.8px] text-[#f3f4f6] mb-2">
+            <h1 className="m-0 text-[28px] font-semibold tracking-[-0.8px] text-[var(--k)] mb-2">
               Protocol operations
             </h1>
-            <p className="m-0 text-[13.5px] leading-[1.55] text-[#8b96a5] max-w-[560px]">
+            <p className="m-0 text-[13.5px] leading-[1.55] text-[var(--g2)] max-w-[560px]">
               Live treasury metrics, market exposure, pending resolutions, and creation tools.
             </p>
           </div>
-          <div className="flex gap-[2px] p-[3px] rounded-[4px] border border-[#1f2630] bg-[#131820]">
+          <div className="flex gap-[2px] p-[3px] rounded-[4px] border border-[var(--k)] bg-[var(--w)]">
             {tabs.map((t) => (
               <button
                 key={t}
                 onClick={() => onTabClick(t)}
                 className="px-[14px] py-[7px] rounded-[3px] text-[12px] font-medium capitalize cursor-pointer transition-colors"
                 style={{
-                  background: activeTab === t ? "#1f2630" : "transparent",
-                  color: activeTab === t ? "#f3f4f6" : "#8b96a5",
+                  background: activeTab === t ? "var(--k)" : "transparent",
+                  color: activeTab === t ? "var(--y)" : "var(--g2)",
                 }}
               >
                 {t}
@@ -1052,16 +909,16 @@ function AdminDashboard() {
             ))}
           </div>
         </div>
-        <div className="flex gap-8 pt-[18px] border-t border-[#1f2630] flex-wrap">
+        <div className="flex gap-8 pt-[18px] border-t border-[var(--k)] flex-wrap">
           {[
             { k: "Fee model", v: `${(PLATFORM_FEE_BPS / 100).toFixed(2)}%`, sub: "Flat · per pool" },
-            { k: "Settlement rail", v: "USDC", sub: "Arc testnet" },
+            { k: "Settlement rail", v: "cUSDT", sub: "Sepolia" },
             { k: "Current cycle", v: `${windowLabel(cycleStart)} – ${windowLabel(cycleEnd)}`, sub: `Day ${cycleDay} of ${daysInCycle}` },
           ].map((i) => (
             <div key={i.k} className="flex flex-col gap-[3px]">
               <span className="mono label">{i.k}</span>
-              <div className="mono text-[14px] text-[#f3f4f6] font-medium mt-[2px]">{i.v}</div>
-              <div className="mono text-[11px] text-[#8b96a5]">{i.sub}</div>
+              <div className="mono text-[14px] text-[var(--k)] font-medium mt-[2px]">{i.v}</div>
+              <div className="mono text-[11px] text-[var(--g2)]">{i.sub}</div>
             </div>
           ))}
         </div>
@@ -1089,7 +946,7 @@ function AdminDashboard() {
             accent="#22c55e"
             label="Treasury balance"
             value={treasuryBalance ? fmtUSDCCompact(treasuryBalance as bigint) : "—"}
-            sub={`USDC · ${shortenAddress(treasuryAddress)}`}
+            sub={`cUSDT · ${shortenAddress(treasuryAddress)}`}
           />
           <Metric
             icon={Landmark}
@@ -1116,13 +973,13 @@ function AdminDashboard() {
 
         {/* Protocol overview + treasury */}
         <div id="admin-treasury" className="grid gap-[14px] xl:grid-cols-[1.35fr_1fr] scroll-mt-[72px]">
-          <section className="rounded-[4px] border border-[#1f2630] bg-[#131820] p-6">
+          <section className="rounded-[4px] border border-[var(--k)] bg-[var(--w)] p-6">
             <div className="flex items-baseline justify-between mb-5">
-              <h3 className="m-0 text-[14px] font-semibold text-[#f3f4f6]">Protocol overview</h3>
+              <h3 className="m-0 text-[14px] font-semibold text-[var(--k)]">Protocol overview</h3>
               <button
                 onClick={loadPrices}
                 disabled={loadingPrices}
-                className="mono text-[11px] text-[#6b7280] hover:text-[#f3f4f6] transition-colors flex items-center gap-[5px]"
+                className="mono text-[11px] text-[var(--g2)] hover:text-[var(--k)] transition-colors flex items-center gap-[5px]"
               >
                 <RefreshCw className={`h-3 w-3 ${loadingPrices ? "animate-spin" : ""}`} />
                 Refresh prices
@@ -1157,15 +1014,15 @@ function AdminDashboard() {
               ].map((b) => (
                 <div key={b.label}>
                   <div className="flex justify-between items-baseline mb-2">
-                    <span className="text-[12px] text-[#f3f4f6]">{b.label}</span>
+                    <span className="text-[12px] text-[var(--k)]">{b.label}</span>
                     <div className="flex gap-3 items-baseline">
-                      <span className="mono text-[11px] text-[#8b96a5]">{b.right}</span>
-                      <span className="mono text-[12px] text-[#f3f4f6] font-medium min-w-[36px] text-right">
+                      <span className="mono text-[11px] text-[var(--g2)]">{b.right}</span>
+                      <span className="mono text-[12px] text-[var(--k)] font-medium min-w-[36px] text-right">
                         {pct(clamp(b.value))}
                       </span>
                     </div>
                   </div>
-                  <div className="h-[4px] rounded-full overflow-hidden bg-[#1f2630]">
+                  <div className="h-[4px] rounded-full overflow-hidden bg-[var(--g1)]">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${clamp(b.value)}%`, background: b.color }}
@@ -1174,10 +1031,10 @@ function AdminDashboard() {
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 pt-[18px] border-t border-[#1f2630]">
+            <div className="grid grid-cols-1 md:grid-cols-3 pt-[18px] border-t border-[var(--k)]">
               {[
                 { label: "Fee rule", v: `${(PLATFORM_FEE_BPS / 100).toFixed(2)}% flat`, sub: "Per market pool" },
-                { label: "Payout path", v: "USDC · instant", sub: "Arc settlement" },
+                { label: "Payout path", v: "cUSDT · instant", sub: "Sepolia settlement" },
                 { label: "Market-maker readiness", v: "UI ready", sub: "Rebates module pending" },
               ].map((t, i) => (
                 <div
@@ -1185,30 +1042,30 @@ function AdminDashboard() {
                   className="px-4"
                   style={{
                     paddingLeft: i === 0 ? 0 : 16,
-                    borderLeft: i === 0 ? "none" : "1px solid #1f2630",
+                    borderLeft: i === 0 ? "none" : "1px solid var(--g1)",
                   }}
                 >
                   <div className="mono label mb-[5px]">{t.label}</div>
-                  <div className="mono text-[13px] text-[#f3f4f6] font-medium">{t.v}</div>
-                  <div className="mono text-[10px] text-[#6b7280] mt-[2px]">{t.sub}</div>
+                  <div className="mono text-[13px] text-[var(--k)] font-medium">{t.v}</div>
+                  <div className="mono text-[10px] text-[var(--g2)] mt-[2px]">{t.sub}</div>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="rounded-[4px] border border-[#1f2630] bg-[#131820] p-6">
-            <h3 className="m-0 text-[14px] font-semibold text-[#f3f4f6] mb-5">Treasury & risk</h3>
+          <section className="rounded-[4px] border border-[var(--k)] bg-[var(--w)] p-6">
+            <h3 className="m-0 text-[14px] font-semibold text-[var(--k)] mb-5">Treasury & risk</h3>
 
             <div className="flex flex-col gap-[14px] mb-5">
               <div className="flex justify-between items-center">
                 <div>
                   <div className="mono label mb-[4px]">Treasury address</div>
-                  <div className="mono text-[13px] text-[#f3f4f6]">{shortenAddress(treasuryAddress)}</div>
+                  <div className="mono text-[13px] text-[var(--k)]">{shortenAddress(treasuryAddress)}</div>
                 </div>
                 <div className="flex gap-[4px]">
                   <button
                     onClick={() => copyAddress(treasuryAddress, "Treasury")}
-                    className="w-[28px] h-[28px] rounded-[3px] border border-[#1f2630] text-[#8b96a5] flex items-center justify-center hover:text-[#f3f4f6] hover:border-[#2a3340] transition-colors"
+                    className="w-[28px] h-[28px] rounded-[3px] border border-[var(--k)] text-[var(--g2)] flex items-center justify-center hover:text-[var(--k)] hover:border-[var(--k)] transition-colors"
                     aria-label="Copy treasury"
                   >
                     <Copy className="h-3 w-3" />
@@ -1217,17 +1074,17 @@ function AdminDashboard() {
                     href={explorerUrl(treasuryAddress)}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-[28px] h-[28px] rounded-[3px] border border-[#1f2630] text-[#8b96a5] flex items-center justify-center hover:text-[#f3f4f6] hover:border-[#2a3340] transition-colors"
+                    className="w-[28px] h-[28px] rounded-[3px] border border-[var(--k)] text-[var(--g2)] flex items-center justify-center hover:text-[var(--k)] hover:border-[var(--k)] transition-colors"
                     aria-label="Open in explorer"
                   >
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
               </div>
-              <div className="flex justify-between items-center pt-[14px] border-t border-[#1f2630]">
+              <div className="flex justify-between items-center pt-[14px] border-t border-[var(--k)]">
                 <div>
                   <div className="mono label mb-[4px]">Admin authority</div>
-                  <div className="mono text-[13px] text-[#f3f4f6]">
+                  <div className="mono text-[13px] text-[var(--k)]">
                     {onChainOwner ? shortenAddress(onChainOwner as string) : "—"}
                   </div>
                 </div>
@@ -1236,52 +1093,48 @@ function AdminDashboard() {
                     className="w-[6px] h-[6px] rounded-full"
                     style={{ background: ownerMismatch ? "#ef4444" : "#22c55e" }}
                   />
-                  <span className="mono text-[11px] text-[#8b96a5]">
+                  <span className="mono text-[11px] text-[var(--g2)]">
                     {ownerMismatch ? "Mismatch" : isConnected ? "Active" : "Disconnected"}
                   </span>
                 </div>
               </div>
             </div>
 
-            <TreasuryTopUp
-              treasuryAddress={treasuryAddress}
-              treasuryBalance={treasuryBalance as bigint | undefined}
-              disabled={!isConnected || wrongChain}
-              onSent={() => refetchTreasuryBalance()}
-              onError={setBannerError}
-            />
+            <div className="py-[16px] border-t border-[var(--k)]">
+              <TreasuryPanel treasuryAddress={treasuryAddress} />
+            </div>
 
-            <div className="py-[16px] border-t border-[#1f2630]">
+            <div className="py-[16px] border-t border-[var(--k)]">
               <div className="mono label mb-2">Largest market</div>
               {largestMarket ? (
                 <>
                   <Link
                     href={`/market/${largestMarket.address}`}
-                    className="text-[13px] text-[#f3f4f6] leading-[1.4] mb-[6px] block hover:text-[#2d9cdb] transition-colors line-clamp-2"
+                    className="text-[13px] text-[var(--k)] leading-[1.4] mb-[6px] block hover:underline transition-colors line-clamp-2"
                   >
                     {largestMarket.market.question}
                   </Link>
                   <div className="flex items-baseline gap-2">
-                    <span className="mono text-[16px] font-semibold text-[#f3f4f6]">
+                    <span className="mono text-[16px] font-semibold text-[var(--k)]">
                       {fmtUSDCCompact(largestMarket.totalPool)}
                     </span>
-                    <span className="mono text-[11px] text-[#8b96a5]">
+                    <span className="mono text-[11px] text-[var(--g2)]">
                       pool · est. {fmtUSDCCompact((largestMarket.totalPool * BigInt(PLATFORM_FEE_BPS)) / 10000n)} fees
                     </span>
                   </div>
                 </>
               ) : (
-                <div className="text-[12px] text-[#6b7280]">No market data yet.</div>
+                <div className="text-[12px] text-[var(--g2)]">No market data yet.</div>
               )}
             </div>
 
-            <div className="pt-[16px] border-t border-[#1f2630]">
+            <div className="pt-[16px] border-t border-[var(--k)]">
               <div className="mono label mb-[10px]">Category mix</div>
               {categoryMix.length === 0 ? (
-                <div className="text-[12px] text-[#6b7280]">No category data yet.</div>
+                <div className="text-[12px] text-[var(--g2)]">No category data yet.</div>
               ) : (
                 <>
-                  <div className="flex h-[4px] rounded-full overflow-hidden mb-3 bg-[#1f2630]">
+                  <div className="flex h-[4px] rounded-full overflow-hidden mb-3 bg-[var(--g1)]">
                     {categoryMix.map(([cat, total]) => {
                       const share = totalVolume === 0n ? 0 : Number((total * 10000n) / totalVolume) / 100;
                       return (
@@ -1301,8 +1154,8 @@ function AdminDashboard() {
                             className="w-[6px] h-[6px] rounded-full"
                             style={{ background: catColor(cat) }}
                           />
-                          <span className="text-[#f3f4f6]">{cat}</span>
-                          <span className="mono text-[#8b96a5] ml-auto">{pct(share)}</span>
+                          <span className="text-[var(--k)]">{cat}</span>
+                          <span className="mono text-[var(--g2)] ml-auto">{pct(share)}</span>
                         </div>
                       );
                     })}
@@ -1315,13 +1168,13 @@ function AdminDashboard() {
 
         {/* Ledger + notes */}
         <div id="admin-settlement" className="grid gap-[14px] xl:grid-cols-[1.5fr_1fr] scroll-mt-[72px]">
-          <section className="rounded-[4px] border border-[#1f2630] bg-[#131820] overflow-hidden">
+          <section className="rounded-[4px] border border-[var(--k)] bg-[var(--w)] overflow-hidden">
             <div className="flex items-baseline justify-between px-6 pt-5 pb-4">
-              <h3 className="m-0 text-[14px] font-semibold text-[#f3f4f6]">Market ledger</h3>
+              <h3 className="m-0 text-[14px] font-semibold text-[var(--k)]">Market ledger</h3>
               <span className="mono label">Top 6 by pool</span>
             </div>
             <div
-              className="mono text-[10px] uppercase text-[#6b7280] grid gap-[10px] px-6 pb-[10px]"
+              className="mono text-[10px] uppercase text-[var(--g2)] grid gap-[10px] px-6 pb-[10px]"
               style={{ gridTemplateColumns: "1fr 100px 90px 100px 100px", letterSpacing: "0.14em" }}
             >
               <span>Question</span>
@@ -1331,11 +1184,11 @@ function AdminDashboard() {
               <span className="text-right">Est. fee</span>
             </div>
             {isLoading && loadedEntries.length === 0 ? (
-              <div className="flex items-center justify-center py-14 border-t border-[#1f2630]">
-                <Loader2 className="h-5 w-5 animate-spin text-[#2d9cdb]" />
+              <div className="flex items-center justify-center py-14 border-t border-[var(--k)]">
+                <Loader2 className="h-5 w-5 animate-spin text-[var(--k)]" />
               </div>
             ) : loadedEntries.length === 0 ? (
-              <div className="py-12 text-center text-[13px] text-[#6b7280] border-t border-[#1f2630]">
+              <div className="py-12 text-center text-[13px] text-[var(--g2)] border-t border-[var(--k)]">
                 No markets yet — launch the first batch below.
               </div>
             ) : (
@@ -1347,8 +1200,8 @@ function AdminDashboard() {
             )}
           </section>
 
-          <section className="rounded-[4px] border border-[#1f2630] bg-[#131820] p-6">
-            <h3 className="m-0 text-[14px] font-semibold text-[#f3f4f6] mb-5">Operator notes</h3>
+          <section className="rounded-[4px] border border-[var(--k)] bg-[var(--w)] p-6">
+            <h3 className="m-0 text-[14px] font-semibold text-[var(--k)] mb-5">Operator notes</h3>
             <div className="flex flex-col gap-4">
               {[
                 {
@@ -1357,7 +1210,7 @@ function AdminDashboard() {
                 },
                 {
                   title: "Treasury mapping",
-                  body: "Protocol fees accrue to the treasury address pulled live from the factory. USDC settles in the same unit users trade.",
+                  body: "Protocol fees accrue to the treasury address pulled live from the factory. cUSDT settles in the same unit users trade.",
                 },
                 {
                   title: "Same surface language",
@@ -1366,10 +1219,10 @@ function AdminDashboard() {
               ].map((n, i) => (
                 <div
                   key={n.title}
-                  style={{ paddingTop: i === 0 ? 0 : 16, borderTop: i === 0 ? "none" : "1px solid #1f2630" }}
+                  style={{ paddingTop: i === 0 ? 0 : 16, borderTop: i === 0 ? "none" : "1px solid var(--g1)" }}
                 >
-                  <div className="text-[13px] font-semibold text-[#f3f4f6] mb-[6px]">{n.title}</div>
-                  <div className="text-[12px] text-[#8b96a5] leading-[1.55]">{n.body}</div>
+                  <div className="text-[13px] font-semibold text-[var(--k)] mb-[6px]">{n.title}</div>
+                  <div className="text-[12px] text-[var(--g2)] leading-[1.55]">{n.body}</div>
                 </div>
               ))}
             </div>
@@ -1379,8 +1232,8 @@ function AdminDashboard() {
         {/* Operator actions */}
         <div id="admin-create" className="scroll-mt-[72px]">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 className="m-0 text-[16px] font-semibold text-[#f3f4f6] tracking-[-0.3px]">Operator actions</h2>
-            <span className="mono text-[11px] text-[#6b7280]">
+            <h2 className="m-0 text-[16px] font-semibold text-[var(--k)] tracking-[-0.3px]">Operator actions</h2>
+            <span className="mono text-[11px] text-[var(--g2)]">
               Writes {writesDisabled ? "disabled" : "enabled"} · signature required
             </span>
           </div>
@@ -1407,21 +1260,21 @@ function AdminDashboard() {
                 onError={setBannerError}
               />
             </div>
-            <div className="rounded-[4px] border border-[#1f2630] bg-[#131820] p-6 h-full">
+            <div className="rounded-[4px] border border-[var(--k)] bg-[var(--w)] p-6 h-full">
               <div className="flex items-baseline justify-between mb-4">
                 <div>
-                  <h3 className="m-0 text-[14px] font-semibold text-[#f3f4f6]">Settlement queue</h3>
-                  <div className="mono text-[11px] text-[#6b7280] mt-[3px]">
+                  <h3 className="m-0 text-[14px] font-semibold text-[var(--k)]">Settlement queue</h3>
+                  <div className="mono text-[11px] text-[var(--g2)] mt-[3px]">
                     {sortedAddrs.length} markets · {overdueCount} overdue · {dueEntries.length} due ≤24h
                   </div>
                 </div>
               </div>
               {isLoading ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-5 w-5 animate-spin text-[#2d9cdb]" />
+                  <Loader2 className="h-5 w-5 animate-spin text-[var(--k)]" />
                 </div>
               ) : sortedAddrs.length === 0 ? (
-                <div className="rounded-[4px] border border-dashed border-[#1f2630] py-10 text-center text-[13px] text-[#6b7280]">
+                <div className="rounded-[4px] border border-dashed border-[var(--k)] py-10 text-center text-[13px] text-[var(--g2)]">
                   No markets yet — launch your first daily batch on the left.
                 </div>
               ) : (

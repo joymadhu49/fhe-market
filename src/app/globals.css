@@ -2,27 +2,57 @@
 @import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* ──────────────────────────────────────────────────────────────────────────
+   FHE Market — brutalist Zama-aligned design tokens.
+   Yellow + jet black + white core. Hard square corners everywhere.
+   ────────────────────────────────────────────────────────────────────────── */
 :root {
-  --background: #0b0e12;
-  --surface: #131820;
-  --surface-strong: #1f2630;
-  --surface-soft: #0f141b;
-  --foreground: #f3f4f6;
-  --muted: #8b96a5;
-  --muted-strong: #6b7280;
-  --border: #1f2630;
-  --border-strong: #2a3340;
-  --accent: #2d9cdb;
+  /* Brand */
+  --y: #FFD208;
+  --y-deep: #E5BC00;
+  --k: #0A0A0A;
+  --w: #FFFFFF;
+
+  /* Greyscale ramp (ordered g0 lightest → g3 darkest) */
+  --g0: #F3F4F6;
+  --g1: #C7CDD5;
+  --g2: #6B7280;
+  --g3: #1F2024;
+
+  /* Status accents */
+  --green: #22C55E;
+  --red:   #EF4444;
+  --blue:  #2D9CDB;
+  --amber: #F5A524;
+
+  /* Page surfaces */
+  --bg: var(--g0);
+
+  /* Animation knobs */
+  --tkr-dur: 60s;
+
+  /* Legacy var aliases — older components still read these. */
+  --background: var(--g0);
+  --surface: var(--w);
+  --surface-strong: var(--g1);
+  --surface-soft: var(--g0);
+  --foreground: var(--k);
+  --muted: var(--g2);
+  --muted-strong: var(--g2);
+  --border: var(--k);
+  --border-strong: var(--k);
+  --accent: var(--blue);
   --accent-soft: rgba(45, 156, 219, 0.14);
-  --success: #22c55e;
-  --danger: #ef4444;
-  --warning: #f59e0b;
+  --success: var(--green);
+  --danger:  var(--red);
+  --warning: var(--amber);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg);
+  --color-foreground: var(--k);
   --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
   --font-mono: var(--font-mono);
 }
 
@@ -34,43 +64,101 @@ html, body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+/* `html` paints the over-scroll bounce on macOS / iOS — keep it dark so the
+   page top doesn't flash white when the user pulls past the navbar. */
+html {
+  background: var(--k);
+}
+
 body {
-  background: #0b0e12;
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--k);
   font-feature-settings: "cv11";
 }
 
-/* Propex utility classes — match the mock verbatim */
+::selection { background: var(--y); color: var(--k); }
+
+/* ── Utility classes ────────────────────────────────────────────────────── */
 .mono {
   font-family: var(--font-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-variant-numeric: tabular-nums;
 }
+.display {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--g2);
+}
 .label {
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--g2);
 }
 
-.surface { background: var(--surface); }
-.surface-soft { background: var(--surface-soft); }
-.text-muted { color: var(--muted); }
-.border-surface { border-color: var(--border); }
+/* Hard corners everywhere we apply this. */
+.hard, .hard * { border-radius: 0 !important; }
+
+.surface { background: var(--w); }
+.surface-soft { background: var(--g0); }
+.text-muted { color: var(--g2); }
+.border-surface { border-color: var(--k); }
 .tabular { font-variant-numeric: tabular-nums; }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1f2630; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #2a3340; }
-
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { scrollbar-width: none; }
-
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.45; }
+/* Hard CTA button base. Variants applied via classes. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 2px solid var(--k);
+  cursor: pointer;
+  user-select: none;
+  border-radius: 0;
+  transition: transform 80ms ease-out, box-shadow 120ms ease-out;
 }
+.btn:active { transform: translate(1px, 1px); }
+.btn-primary   { background: var(--k); color: var(--w); }
+.btn-secondary { background: var(--w); color: var(--k); }
+.btn-ghost     { background: transparent; color: var(--k); }
+.btn-yellow    { background: var(--y); color: var(--k); }
+.btn-inv-ghost { background: transparent; color: var(--w); border-color: var(--w); }
+.btn[disabled], .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Square status dot. */
+.sqdot { display: inline-block; width: 8px; height: 8px; }
+
+/* Pixel debris squares for hero/section corners. */
+.pxd { position: absolute; background: var(--k); }
+.pxd.w { background: var(--w); }
+@keyframes pxdIn { from { opacity: 0; transform: translate(2px, -2px); } to { opacity: 1; transform: none; } }
+.pxd { animation: pxdIn 320ms ease-out both; }
+
+/* Ticker scroll. */
+@keyframes tkr { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-track {
+  display: inline-flex;
+  gap: 48px;
+  white-space: nowrap;
+  animation: tkr var(--tkr-dur, 60s) linear infinite;
+  will-change: transform;
+}
+
+/* Live pulse + skeleton (kept from previous build). */
+@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 .animate-live { animation: live-pulse 1.6s ease-in-out infinite; }
 
 @keyframes skeleton {
@@ -78,38 +166,38 @@ body {
   100% { background-position: calc(200px + 100%) 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #111b26 0, #172333 40px, #111b26 80px);
+  background: linear-gradient(90deg, var(--g0) 0, var(--g1) 40px, var(--g0) 80px);
   background-size: 200px 100%;
   animation: skeleton 1.4s linear infinite;
 }
 
-/* Left-to-right scrolling ticker marquee */
-@keyframes ticker-scroll {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-.ticker-track {
-  animation: ticker-scroll 60s linear infinite;
-  will-change: transform;
-}
+/* Scrollbars. */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--g1); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--g2); }
 
-/* Focus rings */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Focus rings — square per brand. */
 a:focus-visible,
 button:focus-visible,
 [role="button"]:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #2d9cdb;
+  outline: 2px solid var(--y);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-live,
   .skeleton,
   .animate-spin,
-  .ticker-track {
+  .ticker-track,
+  .pxd {
     animation: none !important;
   }
   .animate-live { opacity: 0.6; }

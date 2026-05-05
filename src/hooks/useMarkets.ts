@@ -10,7 +10,7 @@ type RawMarket = {
   category: string;
   imageUrl: string;
   resolutionTime: bigint;
-  seedLiquidity: bigint;
+  seedLiquidity: bigint; // uint64 in the FHEVM contract
   outcome: number;
   resolved: boolean;
 };
@@ -65,7 +65,7 @@ export function useMarketData(address: `0x${string}`) {
         category:       raw.category,
         imageUrl:       raw.imageUrl,
         resolutionTime: Number(raw.resolutionTime),
-        seedLiquidity:  raw.seedLiquidity,
+        seedLiquidity:  BigInt(raw.seedLiquidity),
         yesReserve:     yesReserve ?? 0n,
         noReserve:      noReserve  ?? 0n,
         outcome:        OUTCOME_MAP[raw.outcome] ?? "UNRESOLVED",
@@ -86,16 +86,20 @@ export function useMarketData(address: `0x${string}`) {
   };
 }
 
+/**
+ * Per-user shares are now `euint64` ciphertext handles. Use `useEncryptedShares`
+ * for the on-demand user-decrypt flow. This thin wrapper just exposes the
+ * raw handles for places that previously read getUserShares() and only need
+ * to know "does the user have any encrypted position?" (handle != 0).
+ */
 export function useUserShares(marketAddress: `0x${string}`, userAddress?: `0x${string}`) {
   return useReadContract({
     address: marketAddress,
     abi: PREDICTION_MARKET_ABI,
-    functionName: "getUserShares",
+    functionName: "yesSharesHandle",
     args: userAddress ? [userAddress] : undefined,
     query: {
       enabled: !!userAddress,
-      // Portfolio correctness matters more than RPC chatter here — if you just
-      // bought on another page, tabbing back should show the position.
       refetchOnMount: "always",
       refetchOnWindowFocus: true,
       staleTime: 5_000,
@@ -103,19 +107,14 @@ export function useUserShares(marketAddress: `0x${string}`, userAddress?: `0x${s
   });
 }
 
-export function usePreviewPayout(marketAddress: `0x${string}`, userAddress?: `0x${string}`) {
-  return useReadContract({
-    address: marketAddress,
-    abi: PREDICTION_MARKET_ABI,
-    functionName: "previewPayout",
-    args: userAddress ? [userAddress] : undefined,
-    query: {
-      enabled: !!userAddress,
-      refetchOnMount: "always",
-      refetchOnWindowFocus: true,
-      staleTime: 5_000,
-    },
-  });
+/**
+ * Previewing a payout pre-claim now requires user-decryption (the winning
+ * share count is encrypted). Returning `undefined` makes the legacy callers
+ * fall back to "claim to reveal" UI; once the user reveals, the encrypted
+ * shares hook surfaces the cleartext.
+ */
+export function usePreviewPayout(_marketAddress: `0x${string}`, _userAddress?: `0x${string}`) {
+  return { data: undefined, isLoading: false, refetch: async () => {} };
 }
 
 export function usePreviewBuy(
@@ -143,5 +142,14 @@ export function usePreviewSell(
     functionName: "previewSell",
     args: sharesIn ? [isYes, sharesIn] : undefined,
     query: { enabled: sharesIn !== undefined && sharesIn > 0n },
+  });
+}
+
+/** Public on-chain bookkeeping of cUSDT held by the market. */
+export function useCUSDTHeld(marketAddress: `0x${string}`) {
+  return useReadContract({
+    address: marketAddress,
+    abi: PREDICTION_MARKET_ABI,
+    functionName: "cUSDTHeld",
   });
 }

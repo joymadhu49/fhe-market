@@ -23,13 +23,13 @@ function NavLink({
   compact?: boolean;
 }) {
   const className = compact
-    ? `flex items-center h-[44px] px-4 text-[14px] font-medium border-l-[3px] transition-colors ${
+    ? `flex items-center h-[44px] px-4 text-[13px] font-medium border-l-[3px] mono uppercase tracking-[0.1em] transition-colors ${
         active
-          ? "text-[#f3f4f6] border-[#2d9cdb] bg-[#131820]"
-          : "text-[#8b96a5] border-transparent hover:text-[#f3f4f6] hover:bg-[#131820]"
+          ? "text-[var(--y)] border-[var(--y)] bg-[#111]"
+          : "text-white border-transparent hover:text-[var(--y)] hover:bg-[#111]"
       }`
-    : `relative flex items-end h-[56px] pb-[16px] text-[13px] font-medium transition-colors mr-[24px] ${
-        active ? "text-[#f3f4f6]" : "text-[#8b96a5] hover:text-[#f3f4f6]"
+    : `mono relative flex items-center h-[56px] px-4 text-[12px] font-semibold tracking-[0.12em] uppercase transition-colors ${
+        active ? "text-[var(--y)]" : "text-white hover:text-[var(--y)]"
       }`;
 
   if (external) {
@@ -43,7 +43,7 @@ function NavLink({
     <Link href={href} className={className} onClick={onClick}>
       {label}
       {!compact && active && (
-        <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#2d9cdb]" />
+        <span className="absolute bottom-0 left-0 right-0" style={{ height: 2, background: "var(--y)" }} />
       )}
     </Link>
   );
@@ -59,7 +59,6 @@ export default function Navbar() {
     return pathname?.startsWith(href) ?? false;
   };
 
-  // Lock body scroll while the drawer is open.
   useEffect(() => {
     if (mobileOpen) {
       document.body.style.overflow = "hidden";
@@ -71,19 +70,20 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 border-b border-[#1f2630] bg-[#0b0e12] flex items-center justify-between px-4 sm:px-6 lg:px-8 h-[56px]">
-        <div className="flex items-center gap-9 min-w-0">
-          <Link href="/" className="flex items-center shrink-0">
-            <Logo compact={false} />
-          </Link>
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-end h-[56px]">
-            <NavLink href="/" label="Markets" active={isActive("/")} />
-            <NavLink href="/portfolio" label="Portfolio" active={isActive("/portfolio")} />
-            <NavLink href="/leaderboard" label="Leaderboard" active={isActive("/leaderboard")} />
-            {isAdmin && <NavLink href="/admin" label="Admin" active={isActive("/admin")} />}
-            <NavLink href="/docs" label="Docs" active={isActive("/docs")} />
-          </div>
+      <nav
+        className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 lg:px-8 h-[56px]"
+        style={{ background: "var(--k)", borderBottom: "2px solid var(--k)" }}
+      >
+        <Link href="/" className="flex items-center shrink-0">
+          <Logo />
+        </Link>
+
+        <div className="hidden md:flex items-center h-[56px] gap-1 absolute left-1/2 -translate-x-1/2">
+          <NavLink href="/" label="Markets" active={isActive("/")} />
+          <NavLink href="/portfolio" label="Portfolio" active={isActive("/portfolio")} />
+          <NavLink href="/leaderboard" label="Leaderboard" active={isActive("/leaderboard")} />
+          {isAdmin && <NavLink href="/admin" label="Admin" active={isActive("/admin")} />}
+          <NavLink href="/docs" label="Docs" active={isActive("/docs")} />
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -92,10 +92,10 @@ export default function Navbar() {
             chainStatus={{ smallScreen: "icon", largeScreen: "icon" }}
             showBalance={{ smallScreen: false, largeScreen: false }}
           />
-          {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen((v) => !v)}
-            className="md:hidden flex items-center justify-center h-[40px] w-[40px] rounded-[4px] border border-[#1f2630] bg-[#131820] text-[#8b96a5] hover:text-[#f3f4f6] hover:border-[#2a3340] transition-colors"
+            className="md:hidden flex items-center justify-center h-[40px] w-[40px] text-white hover:text-[var(--y)] transition-colors"
+            style={{ border: "2px solid var(--y)", background: "transparent" }}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
           >
@@ -104,15 +104,17 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 top-[56px] z-40 bg-black/60 md:hidden"
+            className="fixed inset-0 top-[56px] z-40 bg-black/70 md:hidden"
             onClick={closeMenu}
             aria-hidden
           />
-          <div className="fixed inset-x-0 top-[56px] z-50 border-b border-[#1f2630] bg-[#0b0e12] md:hidden">
+          <div
+            className="fixed inset-x-0 top-[56px] z-50 md:hidden"
+            style={{ background: "var(--k)", borderBottom: "2px solid var(--y)" }}
+          >
             <nav className="flex flex-col">
               <NavLink href="/" label="Markets" active={isActive("/")} onClick={closeMenu} compact />
               <NavLink href="/portfolio" label="Portfolio" active={isActive("/portfolio")} onClick={closeMenu} compact />

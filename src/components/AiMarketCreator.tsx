@@ -139,12 +139,25 @@ export function AiMarketCreator({
     }
   }
 
+  const inputCls =
+    "w-full rounded-none border-2 border-[var(--k)] bg-[var(--g0)] px-3 py-2.5 text-[13px] text-[var(--k)] placeholder-[var(--g2)] focus:bg-[var(--w)] focus:outline-none";
+
   return (
-    <div className="rounded-[4px] border border-[#1f2630] bg-[#131820] p-5">
+    <div className="p-5" style={{ background: "var(--w)", border: "2px solid var(--k)" }}>
       <div className="mb-4 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-[#a855f7]" />
-        <h3 className="text-[14px] font-semibold text-[#f3f4f6]">AI market creator</h3>
-        <span className="mono label ml-auto">Beta</span>
+        <span
+          className="inline-flex items-center justify-center"
+          style={{ width: 22, height: 22, background: "var(--y)", border: "2px solid var(--k)" }}
+        >
+          <Sparkles className="h-3 w-3" style={{ color: "var(--k)" }} />
+        </span>
+        <h3 className="text-[14px] font-semibold" style={{ color: "var(--k)" }}>AI market creator</h3>
+        <span
+          className="mono ml-auto px-2 py-[2px] text-[10px] font-bold tracking-[0.14em]"
+          style={{ background: "var(--k)", color: "var(--y)" }}
+        >
+          BETA
+        </span>
       </div>
 
       {!proposal && (
@@ -154,7 +167,7 @@ export function AiMarketCreator({
             onChange={(e) => setInstruction(e.target.value)}
             rows={3}
             placeholder="Describe the market you want to create — e.g. 'Will SOL close above $280 by end of week?' or 'Make a market on whether Bitcoin hits $150k this month'."
-            className="w-full resize-none rounded-[4px] border border-[#1f2630] bg-[#0b0e12] px-3 py-2.5 text-[13px] text-[#f3f4f6] placeholder-[#363d4b] focus:border-[#2d9cdb] focus:outline-none"
+            className={`${inputCls} resize-none`}
           />
 
           <div className="mt-2 flex flex-wrap gap-2">
@@ -164,7 +177,7 @@ export function AiMarketCreator({
                 type="button"
                 onClick={() => setInstruction(ex)}
                 disabled={thinking}
-                className="rounded-[3px] border border-[#1f2630] bg-[#0b0e12] px-[10px] py-[4px] text-[11px] text-[#8b96a5] hover:border-[#2a3340] hover:text-[#f3f4f6] disabled:opacity-50 transition-colors"
+                className="rounded-none border-2 border-[var(--k)] bg-[var(--w)] px-[10px] py-[4px] text-[11px] font-medium text-[var(--k)] hover:bg-[var(--y)] disabled:opacity-50 transition-colors"
               >
                 {truncate(ex, 50)}
               </button>
@@ -172,26 +185,32 @@ export function AiMarketCreator({
           </div>
 
           {error && (
-            <div className="mt-3 flex items-start gap-2 rounded-[4px] border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-[11.5px] text-[#ef4444]">
+            <div
+              className="mt-3 flex items-start gap-2 px-3 py-2 text-[11.5px]"
+              style={{ background: "var(--w)", border: "2px solid var(--red)", color: "var(--red)" }}
+            >
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span className="break-words">{error}</span>
             </div>
           )}
 
           <div className="mt-4 flex items-center justify-between gap-3">
-            <span className="mono label">Auto-detect category · suggest source</span>
+            <span className="mono text-[10px] tracking-[0.14em] font-bold" style={{ color: "var(--g2)" }}>
+              AUTO-DETECT CATEGORY · SUGGEST SOURCE
+            </span>
             <button
               onClick={() => propose(instruction)}
               disabled={thinking || !instruction.trim() || disabled}
-              className="flex items-center justify-center gap-1.5 rounded-[3px] bg-gradient-to-r from-[#3b82f6] to-[#a855f7] px-4 py-[8px] text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="mono flex items-center justify-center gap-1.5 rounded-none px-4 py-[9px] text-[11px] font-bold tracking-[0.12em] disabled:opacity-50 transition-opacity"
+              style={{ background: "var(--y)", color: "var(--k)", border: "2px solid var(--k)" }}
             >
               {thinking ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> THINKING…
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-3.5 w-3.5" /> Generate with AI
+                  <Sparkles className="h-3.5 w-3.5" /> GENERATE WITH AI
                 </>
               )}
             </button>
@@ -202,37 +221,43 @@ export function AiMarketCreator({
       {proposal && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-[11px]">
-            <span className="rounded-[3px] border border-[#1f2630] bg-[#0b0e12] px-[8px] py-[3px] mono label">
-              {proposal.category}
+            <span
+              className="mono px-[8px] py-[3px] text-[10px] font-bold tracking-[0.14em]"
+              style={{ background: "var(--k)", color: "var(--w)" }}
+            >
+              {proposal.category.toUpperCase()}
             </span>
             {proposal.crypto && (
-              <span className="rounded-[3px] border border-[#a855f7]/30 bg-[#a855f7]/10 px-[8px] py-[3px] mono text-[10px] text-[#a855f7]">
+              <span
+                className="mono px-[8px] py-[3px] text-[10px] font-bold tracking-[0.1em]"
+                style={{ background: "var(--y)", color: "var(--k)", border: "2px solid var(--k)" }}
+              >
                 {COIN_BY_ID[proposal.crypto.coin].symbol} {formatUsd(proposal.crypto.startUsd)} → {formatUsd(proposal.crypto.targetUsd)}
               </span>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block mono label">Question</label>
+            <label className="mb-1 block mono text-[10px] tracking-[0.14em] font-bold" style={{ color: "var(--g2)" }}>QUESTION</label>
             <input
               value={editQuestion}
               onChange={(e) => setEditQuestion(e.target.value)}
-              className="w-full rounded-[4px] border border-[#1f2630] bg-[#0b0e12] px-3 py-2.5 text-[13px] text-[#f3f4f6] focus:border-[#2d9cdb] focus:outline-none"
+              className={inputCls}
             />
           </div>
 
           <div>
-            <label className="mb-1 block mono label">Description</label>
+            <label className="mb-1 block mono text-[10px] tracking-[0.14em] font-bold" style={{ color: "var(--g2)" }}>DESCRIPTION</label>
             <textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               rows={4}
-              className="w-full resize-none rounded-[4px] border border-[#1f2630] bg-[#0b0e12] px-3 py-2.5 text-[13px] text-[#f3f4f6] focus:border-[#2d9cdb] focus:outline-none"
+              className={`${inputCls} resize-none`}
             />
           </div>
 
           <div>
-            <label className="mb-1 block mono label">Image URL</label>
+            <label className="mb-1 block mono text-[10px] tracking-[0.14em] font-bold" style={{ color: "var(--g2)" }}>IMAGE URL</label>
             <div className="flex gap-2">
               {editImageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -241,7 +266,8 @@ export function AiMarketCreator({
                   alt=""
                   onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
                   onLoad={(ev) => { (ev.currentTarget as HTMLImageElement).style.visibility = "visible"; }}
-                  className="h-9 w-9 rounded-[4px] border border-[#1f2630] bg-[#0b0e12] object-cover"
+                  className="h-10 w-10 object-cover"
+                  style={{ border: "2px solid var(--k)", background: "var(--g0)" }}
                 />
               )}
               <input
@@ -249,25 +275,28 @@ export function AiMarketCreator({
                 value={editImageUrl}
                 onChange={(e) => setEditImageUrl(e.target.value)}
                 placeholder="https://… (optional)"
-                className="w-full rounded-[4px] border border-[#1f2630] bg-[#0b0e12] px-3 py-2.5 text-[13px] text-[#f3f4f6] placeholder-[#363d4b] focus:border-[#2d9cdb] focus:outline-none"
+                className={inputCls}
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block mono label">Resolves in (days)</label>
+            <label className="mb-1 block mono text-[10px] tracking-[0.14em] font-bold" style={{ color: "var(--g2)" }}>RESOLVES IN (DAYS)</label>
             <input
               type="number"
               min={1}
               max={30}
               value={editDays}
               onChange={(e) => setEditDays(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
-              className="w-full rounded-[4px] border border-[#1f2630] bg-[#0b0e12] px-3 py-2.5 text-[13px] text-[#f3f4f6] focus:border-[#2d9cdb] focus:outline-none"
+              className={inputCls}
             />
           </div>
 
           {error && (
-            <div className="flex items-start gap-2 rounded-[4px] border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-[11.5px] text-[#ef4444]">
+            <div
+              className="flex items-start gap-2 px-3 py-2 text-[11.5px]"
+              style={{ background: "var(--w)", border: "2px solid var(--red)", color: "var(--red)" }}
+            >
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span className="break-words">{error}</span>
             </div>
@@ -277,25 +306,27 @@ export function AiMarketCreator({
             <button
               onClick={confirm}
               disabled={submitting || !editQuestion.trim() || !editDescription.trim() || disabled}
-              className="flex flex-1 items-center justify-center gap-2 rounded-[3px] bg-gradient-to-r from-[#3b82f6] to-[#a855f7] py-[9px] text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="mono flex flex-1 items-center justify-center gap-2 rounded-none py-[10px] text-[11px] font-bold tracking-[0.12em] disabled:opacity-50"
+              style={{ background: "var(--y)", color: "var(--k)", border: "2px solid var(--k)" }}
             >
               {submitting ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> CREATING…
                 </>
               ) : (
                 <>
-                  <Check className="h-3.5 w-3.5" /> Confirm & Create
+                  <Check className="h-3.5 w-3.5" /> CONFIRM &amp; CREATE
                 </>
               )}
             </button>
             <button
               onClick={() => propose(instruction)}
               disabled={thinking || submitting}
-              className="flex items-center gap-1.5 rounded-[3px] border border-[#1f2630] bg-[#0b0e12] px-3 py-[9px] text-[11px] text-[#8b96a5] hover:border-[#2a3340] hover:text-[#f3f4f6] disabled:opacity-50 transition-colors"
+              className="mono flex items-center gap-1.5 rounded-none px-3 py-[10px] text-[10px] font-bold tracking-[0.12em] disabled:opacity-50"
+              style={{ background: "var(--w)", color: "var(--k)", border: "2px solid var(--k)" }}
             >
               {thinking ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              Regenerate
+              REGEN
             </button>
             <button
               onClick={() => {
@@ -303,9 +334,10 @@ export function AiMarketCreator({
                 setError(null);
               }}
               disabled={submitting}
-              className="rounded-[3px] border border-[#1f2630] bg-[#0b0e12] px-3 py-[9px] text-[11px] text-[#6b7280] hover:text-[#9aa5b1] disabled:opacity-50 transition-colors"
+              className="mono rounded-none px-3 py-[10px] text-[10px] font-bold tracking-[0.12em] disabled:opacity-50"
+              style={{ background: "var(--w)", color: "var(--g2)", border: "2px solid var(--g1)" }}
             >
-              Discard
+              DISCARD
             </button>
           </div>
         </div>

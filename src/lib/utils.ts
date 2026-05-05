@@ -1,13 +1,13 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { USDC_DECIMALS } from "./constants";
+import { CUSDT_DECIMALS } from "./constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export function formatUSDC(raw: bigint): string {
-  const n = Number(raw) / 10 ** USDC_DECIMALS;
+  const n = Number(raw) / 10 ** CUSDT_DECIMALS;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -16,8 +16,12 @@ export function formatUSDC(raw: bigint): string {
 }
 
 export function parseUSDC(amount: string): bigint {
-  return BigInt(Math.round(parseFloat(amount) * 10 ** USDC_DECIMALS));
+  return BigInt(Math.round(parseFloat(amount) * 10 ** CUSDT_DECIMALS));
 }
+
+/** cUSDT-aware aliases. */
+export const formatCUSDT = formatUSDC;
+export const parseCUSDT = parseUSDC;
 
 export function formatOdds(raw: bigint): string {
   // raw is scaled 1e18
@@ -53,11 +57,13 @@ export function fmtUSD(n: number): string {
   return `$${n.toFixed(0)}`;
 }
 
-/** Compact bigint USDC value using the 6-decimal scale. */
+/** Compact bigint cUSDT value using the 6-decimal scale. */
 export function fmtUSDCCompact(raw: bigint): string {
-  const n = Number(raw) / 10 ** USDC_DECIMALS;
+  const n = Number(raw) / 10 ** CUSDT_DECIMALS;
   return fmtUSD(n);
 }
+
+export const fmtCUSDTCompact = fmtUSDCCompact;
 
 /** Short-form number: 1.2M / 45K / 123 (no dollar sign). */
 export function fmtShort(n: number): string {

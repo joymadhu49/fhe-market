@@ -23,13 +23,13 @@ export function txErrorMessage(e: unknown): string {
     return "Transaction rejected in wallet";
   }
   if (/insufficient funds/i.test(reason)) {
-    return "Insufficient USDC for gas. Arc Testnet uses USDC as the gas token — top up at faucet.circle.com.";
+    return "Insufficient ETH for gas on Sepolia — get test ETH at https://sepoliafaucet.com.";
   }
   if (/OwnableUnauthorized|caller is not the owner/i.test(reason)) {
     return "Connected wallet is not the factory owner — only the deployer wallet can create or resolve markets.";
   }
   if (/chain.*mismatch|Chain.*not.*configured/i.test(reason)) {
-    return "Wrong network — switch your wallet to Arc Testnet.";
+    return "Wrong network — switch your wallet to Sepolia.";
   }
   if (/Resolution must be in future/i.test(reason)) {
     return "Resolution time must be in the future.";

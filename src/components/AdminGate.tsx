@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ADMIN_ADDRESS } from "@/lib/constants";
 import { shortenAddress } from "@/lib/utils";
 
-const STORAGE_KEY = "propex_admin_proof";
+const STORAGE_KEY = "fhe-market_admin_proof";
 
 interface Proof {
   address: `0x${string}`;
@@ -25,9 +25,9 @@ const PROOF_TTL_SECONDS = 4 * 60 * 60;
 function buildMessage(address: `0x${string}`): { message: string; issuedAt: number } {
   const issuedAt = Math.floor(Date.now() / 1000);
   const domain =
-    typeof window !== "undefined" ? window.location.host : "propex";
+    typeof window !== "undefined" ? window.location.host : "fhe-market";
   const message = [
-    `${domain} wants you to sign in as the Propex admin:`,
+    `${domain} wants you to sign in as the FHE Market admin:`,
     address,
     ``,
     `Prove ownership of this wallet to unlock the admin dashboard.`,
