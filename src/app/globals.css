@@ -138,7 +138,11 @@ body {
 .btn-inv-ghost { background: transparent; color: var(--w); border-color: var(--w); }
 .btn[disabled], .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 /* When the button is mid-action keep full color so the spinner is legible. */
-.btn[disabled][data-loading="true"], .btn:disabled[data-loading="true"] { opacity: 1; cursor: progress; }
+.btn[disabled][data-loading="true"], .btn:disabled[data-loading="true"] {
+  opacity: 1;
+  cursor: default;
+  pointer-events: none; /* swallow hover so the OS doesn't keep showing the busy ring */
+}
 
 /* Square status dot. */
 .sqdot { display: inline-block; width: 8px; height: 8px; }

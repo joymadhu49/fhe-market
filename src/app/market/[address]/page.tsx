@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, use } from "react";
 import { useSearchParams } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import {
   useMarketData,
   usePreviewBuy,
@@ -18,6 +18,7 @@ import {
   shortenAddress,
 } from "@/lib/utils";
 import { PLATFORM_FEE_BPS, CUSDT_DECIMALS } from "@/lib/constants";
+import { PREDICTION_MARKET_ABI } from "@/lib/abi";
 import { BetSide } from "@/types";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -196,6 +197,17 @@ export default function MarketPage({ params }: Props) {
   const hasYesHandle = encShares.yesHandle && encShares.yesHandle !== ZERO_HANDLE;
   const hasNoHandle = encShares.noHandle && encShares.noHandle !== ZERO_HANDLE;
   const hasPosition = !!(hasYesHandle || hasNoHandle);
+
+  // After claim/refund the contract flips `claimed[user] = true`. Hide the CTA
+  // when set so users don't get a stuck "CLAIM WINNINGS" button on a market
+  // they already settled.
+  const { data: alreadyClaimed } = useReadContract({
+    address: addr,
+    abi: PREDICTION_MARKET_ABI,
+    functionName: "claimed",
+    args: userAddress ? [userAddress] : undefined,
+    query: { enabled: !!userAddress && market.resolved, refetchInterval: 8_000 },
+  });
   const userYes = encShares.revealed ? (encShares.yesShares ?? 0n) : 0n;
   const userNo = encShares.revealed ? (encShares.noShares ?? 0n) : 0n;
   const userSideShares = side === "YES" ? userYes : userNo;
@@ -758,7 +770,7 @@ export default function MarketPage({ params }: Props) {
                   >
                     RESOLVED · {market.outcome}
                   </div>
-                  {hasPosition && (
+                  {hasPosition && !alreadyClaimed && (
                     <Btn
                       kind="yellow"
                       full
@@ -771,6 +783,17 @@ export default function MarketPage({ params }: Props) {
                     >
                       {isActing ? "WORKING" : "CLAIM WINNINGS"}
                     </Btn>
+                  )}
+                  {(isActing || isDone) && (
+                    <StepStrip label={isDone ? "CONFIRMED" : (stepLabel ?? "WORKING")} progress={stepProgress} done={isDone} />
+                  )}
+                  {alreadyClaimed && (
+                    <div
+                      className="mono text-[10px] tracking-[0.14em] font-bold text-center py-2"
+                      style={{ background: "var(--w)", border: "2px solid var(--green)", color: "var(--green)" }}
+                    >
+                      ✓ CLAIMED
+                    </div>
                   )}
                 </div>
               )}
