@@ -569,6 +569,7 @@ export default function MarketPage({ params }: Props) {
                   <button
                     type="submit"
                     disabled={!userAddress || isActing || !amountNum || writesDisabled || market.resolved}
+                    data-loading={isActing ? "true" : undefined}
                     className="btn"
                     style={{
                       background: market.resolved
@@ -585,7 +586,14 @@ export default function MarketPage({ params }: Props) {
                       width: "100%",
                     }}
                   >
-                    {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : `BUY ${side} · $${amountNum.toFixed(2)}`}
+                    {isActing ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        WORKING…
+                      </span>
+                    ) : (
+                      `BUY ${side} · $${amountNum.toFixed(2)}`
+                    )}
                   </button>
 
                   <div className="mono text-[9px] tracking-[0.1em] text-center" style={{ color: "var(--g2)" }}>
@@ -650,6 +658,7 @@ export default function MarketPage({ params }: Props) {
                   <button
                     type="submit"
                     disabled={!userAddress || isActing || !sharesNum || writesDisabled || market.resolved}
+                    data-loading={isActing ? "true" : undefined}
                     className="btn"
                     style={{
                       background: side === "YES" ? "var(--green)" : "var(--red)",
@@ -662,7 +671,14 @@ export default function MarketPage({ params }: Props) {
                       width: "100%",
                     }}
                   >
-                    {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : `SELL ${side}`}
+                    {isActing ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        WORKING…
+                      </span>
+                    ) : (
+                      `SELL ${side}`
+                    )}
                   </button>
                 </form>
               )}

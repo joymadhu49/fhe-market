@@ -23,9 +23,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           theme={darkTheme({
-            accentColor: "#2d9cdb",
-            accentColorForeground: "#0b0e12",
-            borderRadius: "small",
+            accentColor: "#FFD208",
+            accentColorForeground: "#0A0A0A",
+            borderRadius: "none",
             fontStack: "system",
             overlayBlur: "small",
           })}
@@ -35,9 +35,22 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <Toaster
             position="top-right"
             offset={100}
-            theme="dark"
+            theme="light"
             toastOptions={{
-              style: { background: "#131820", border: "1px solid #1f2630", color: "#f3f4f6", borderRadius: "4px" },
+              unstyled: false,
+              classNames: {
+                toast: "fhem-toast",
+                title: "fhem-toast-title",
+                description: "fhem-toast-desc",
+                actionButton: "fhem-toast-action",
+                cancelButton: "fhem-toast-cancel",
+                closeButton: "fhem-toast-close",
+                loader: "fhem-toast-loader",
+                success: "fhem-toast-success",
+                error: "fhem-toast-error",
+                info: "fhem-toast-info",
+                warning: "fhem-toast-warning",
+              },
             }}
           />
         </RainbowKitProvider>

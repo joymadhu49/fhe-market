@@ -137,6 +137,8 @@ body {
 .btn-yellow    { background: var(--y); color: var(--k); }
 .btn-inv-ghost { background: transparent; color: var(--w); border-color: var(--w); }
 .btn[disabled], .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* When the button is mid-action keep full color so the spinner is legible. */
+.btn[disabled][data-loading="true"], .btn:disabled[data-loading="true"] { opacity: 1; cursor: progress; }
 
 /* Square status dot. */
 .sqdot { display: inline-block; width: 8px; height: 8px; }
@@ -202,4 +204,74 @@ textarea:focus-visible {
   }
   .animate-live { opacity: 0.6; }
   * { transition-duration: 0.01ms !important; }
+}
+
+/* Sonner toast — brutalist override */
+[data-sonner-toaster] {
+  --width: 380px;
+  --offset: 100px;
+  --gap: 10px;
+}
+[data-sonner-toaster] [data-sonner-toast] {
+  background: var(--w) !important;
+  border: 2px solid var(--k) !important;
+  border-radius: 0 !important;
+  color: var(--k) !important;
+  box-shadow: 4px 4px 0 var(--k) !important;
+  padding: 14px 16px !important;
+  font-family: var(--font-mono) !important;
+}
+[data-sonner-toaster] [data-sonner-toast] [data-title] {
+  font-family: var(--font-mono) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--k) !important;
+}
+[data-sonner-toaster] [data-sonner-toast] [data-description] {
+  font-size: 11px !important;
+  color: var(--g2) !important;
+  margin-top: 4px !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] {
+  border-color: var(--green) !important;
+  box-shadow: 4px 4px 0 var(--k) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--green) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] {
+  border-color: var(--red) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--red) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="loading"] {
+  background: var(--y) !important;
+  border-color: var(--k) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="loading"] [data-title] {
+  color: var(--k) !important;
+}
+[data-sonner-toaster] [data-sonner-toast] [data-icon] {
+  width: 16px !important;
+  height: 16px !important;
+}
+[data-sonner-toaster] [data-sonner-toast] [data-cancel],
+[data-sonner-toaster] [data-sonner-toast] [data-button] {
+  background: var(--k) !important;
+  color: var(--y) !important;
+  border: 2px solid var(--k) !important;
+  border-radius: 0 !important;
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+}
+[data-sonner-toaster] [data-sonner-toast] [data-close-button] {
+  background: var(--w) !important;
+  border: 2px solid var(--k) !important;
+  border-radius: 0 !important;
+  color: var(--k) !important;
 }
