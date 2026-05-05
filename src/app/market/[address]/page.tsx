@@ -61,6 +61,63 @@ function Row({
   );
 }
 
+function StepStrip({
+  label,
+  progress,
+  done,
+}: {
+  label: string;
+  progress: { current: number; total: number } | null;
+  done: boolean;
+}) {
+  const total = progress?.total ?? 4;
+  const current = progress?.current ?? 0;
+  const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+  return (
+    <div
+      className="grid gap-2 px-3 py-2.5"
+      style={{
+        background: done ? "var(--w)" : "var(--g0)",
+        border: `2px solid ${done ? "var(--green)" : "var(--k)"}`,
+      }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {done ? (
+            <span
+              className="inline-flex items-center justify-center"
+              style={{ width: 14, height: 14, background: "var(--green)", border: "1.5px solid var(--k)" }}
+              aria-hidden
+            />
+          ) : (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: "var(--k)" }} />
+          )}
+          <span
+            className="mono"
+            style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: "var(--k)" }}
+          >
+            {label}
+          </span>
+        </div>
+        {progress && (
+          <span
+            className="mono"
+            style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: "var(--g2)" }}
+          >
+            STEP {current}/{total}
+          </span>
+        )}
+      </div>
+      <div className="h-[3px]" style={{ background: "var(--g1)" }}>
+        <div
+          className="h-full transition-[width] duration-300 ease-out"
+          style={{ width: `${pct}%`, background: done ? "var(--green)" : "var(--k)" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function MarketPage({ params }: Props) {
   const { address: marketAddress } = use(params);
   const { address: userAddress } = useAccount();
@@ -73,6 +130,8 @@ export default function MarketPage({ params }: Props) {
     claimWinnings,
     isLoading: isActing,
     stepLabel,
+    stepProgress,
+    isDone,
     error: txError,
     clearError,
   } = useBet(addr);
@@ -590,16 +649,20 @@ export default function MarketPage({ params }: Props) {
                     {isActing ? (
                       <span className="inline-flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        {stepLabel ?? "WORKING…"}
+                        WORKING
                       </span>
                     ) : (
                       `BUY ${side} · $${amountNum.toFixed(2)}`
                     )}
                   </button>
 
-                  <div className="mono text-[9px] tracking-[0.1em] text-center" style={{ color: "var(--g2)" }}>
-                    SETTLED ON SEPOLIA · cUSDT · FPMM · 2-TX FLOW
-                  </div>
+                  {(isActing || isDone) ? (
+                    <StepStrip label={isDone ? "CONFIRMED" : (stepLabel ?? "WORKING")} progress={stepProgress} done={isDone} />
+                  ) : (
+                    <div className="mono text-[9px] tracking-[0.1em] text-center" style={{ color: "var(--g2)" }}>
+                      SETTLED ON SEPOLIA · cUSDT · FPMM · 2-TX FLOW
+                    </div>
+                  )}
                 </form>
               ) : (
                 <form onSubmit={handleSellSubmit} className="grid gap-3.5">
@@ -675,12 +738,15 @@ export default function MarketPage({ params }: Props) {
                     {isActing ? (
                       <span className="inline-flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        WORKING…
+                        WORKING
                       </span>
                     ) : (
                       `SELL ${side}`
                     )}
                   </button>
+                  {(isActing || isDone) && (
+                    <StepStrip label={isDone ? "CONFIRMED" : (stepLabel ?? "WORKING")} progress={stepProgress} done={isDone} />
+                  )}
                 </form>
               )}
 
@@ -703,7 +769,7 @@ export default function MarketPage({ params }: Props) {
                       }}
                       disabled={isActing}
                     >
-                      {isActing ? (stepLabel ?? "CLAIMING…") : "CLAIM WINNINGS"}
+                      {isActing ? "WORKING" : "CLAIM WINNINGS"}
                     </Btn>
                   )}
                 </div>

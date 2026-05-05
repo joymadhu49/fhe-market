@@ -140,9 +140,8 @@ export function useBet(marketAddress: `0x${string}`) {
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash: execHash });
 
       setStep("done");
-      toast.success(`${side} shares bought (encrypted)`, { id: "bet" });
       invalidateAllReads();
-      setTimeout(() => setStep("idle"), 1500);
+      setTimeout(() => setStep("idle"), 1200);
     } catch (e: unknown) {
       const msg = txErrorMessage(e);
       setError(msg);
@@ -200,9 +199,8 @@ export function useBet(marketAddress: `0x${string}`) {
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash: execHash });
 
       setStep("done");
-      toast.success(`${side} shares sold`, { id: "bet" });
       invalidateAllReads();
-      setTimeout(() => setStep("idle"), 1500);
+      setTimeout(() => setStep("idle"), 1200);
     } catch (e: unknown) {
       const msg = txErrorMessage(e);
       setError(msg);
@@ -250,9 +248,8 @@ export function useBet(marketAddress: `0x${string}`) {
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash: execHash });
 
       setStep("done");
-      toast.success("Winnings claimed", { id: "claim" });
       invalidateAllReads();
-      setTimeout(() => setStep("idle"), 1500);
+      setTimeout(() => setStep("idle"), 1200);
     } catch (e: unknown) {
       const msg = txErrorMessage(e);
       setError(msg);
@@ -263,17 +260,38 @@ export function useBet(marketAddress: `0x${string}`) {
 
   const stepLabel: string | null = (() => {
     switch (step) {
-      case "operator": return "APPROVING OPERATOR…";
-      case "encrypting": return "ENCRYPTING…";
-      case "buyIntent": return "SUBMITTING INTENT…";
-      case "buyDecrypting": return "WAITING FOR RELAYER…";
-      case "buyExecute": return "EXECUTING SWAP…";
-      case "sellIntent": return "SUBMITTING SELL…";
-      case "sellDecrypting": return "DECRYPTING CLAMP…";
-      case "sellExecute": return "SETTLING SELL…";
-      case "claimIntent": return "SNAPSHOTTING…";
-      case "claimDecrypting": return "DECRYPTING PAYOUT…";
-      case "claimExecute": return "PAYING OUT cUSDT…";
+      case "operator": return "APPROVING OPERATOR";
+      case "encrypting": return "ENCRYPTING INPUT";
+      case "buyIntent": return "SUBMITTING INTENT";
+      case "buyDecrypting": return "WAITING FOR RELAYER";
+      case "buyExecute": return "EXECUTING SWAP";
+      case "sellIntent": return "SUBMITTING SELL INTENT";
+      case "sellDecrypting": return "DECRYPTING CLAMP";
+      case "sellExecute": return "SETTLING SELL";
+      case "claimIntent": return "SNAPSHOTTING WINNINGS";
+      case "claimDecrypting": return "DECRYPTING PAYOUT";
+      case "claimExecute": return "PAYING OUT cUSDT";
+      case "done": return "CONFIRMED";
+      default: return null;
+    }
+  })();
+
+  // Progress index within the active flow (1-based). Buy = 4 phases (encrypt/intent/decrypt/execute),
+  // sell = 4 phases, claim = 3 phases. Operator approval is shown as 0/N.
+  const stepProgress: { current: number; total: number } | null = (() => {
+    switch (step) {
+      case "operator":          return { current: 0, total: 4 };
+      case "encrypting":        return { current: 1, total: 4 };
+      case "buyIntent":         return { current: 2, total: 4 };
+      case "buyDecrypting":     return { current: 3, total: 4 };
+      case "buyExecute":        return { current: 4, total: 4 };
+      case "sellIntent":        return { current: 2, total: 4 };
+      case "sellDecrypting":    return { current: 3, total: 4 };
+      case "sellExecute":       return { current: 4, total: 4 };
+      case "claimIntent":       return { current: 1, total: 3 };
+      case "claimDecrypting":   return { current: 2, total: 3 };
+      case "claimExecute":      return { current: 3, total: 3 };
+      case "done":              return { current: 4, total: 4 };
       default: return null;
     }
   })();
@@ -286,7 +304,9 @@ export function useBet(marketAddress: `0x${string}`) {
     isOperatorSet: !!isOperatorSet,
     step,
     stepLabel,
+    stepProgress,
     isLoading: step !== "idle" && step !== "done",
+    isDone: step === "done",
     error,
     clearError: () => setError(null),
     // Legacy compat: cUSDT balance is now confidential — the betting UI hides it.
