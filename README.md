@@ -2,7 +2,9 @@
 
 > Confidential prediction markets on **Zama FHEVM** (Sepolia). Per-user share balances are end-to-end encrypted as `euint64` ciphertexts; settlement uses **cUSDT** (ERC-7984). Public liquidity, private positions.
 
-Submission: **Zama Mainnet Season 2** — Builder track + OpenBuild APAC track.
+Submission: [**Zama Developer Program — Mainnet Season 2: Confidential Finance**](https://www.zama.org/post/zama-developer-program-mainnet-season-2-confidential-finance-is-the-next-frontier) — Builder track + OpenBuild APAC track.
+
+> Season 2 reframes Zama's developer program around confidential finance: encrypted balances, encrypted trades, encrypted positions on EVM. FHE Market is a binary prediction-market take on that thesis — public CPMM, private positions.
 
 ---
 
